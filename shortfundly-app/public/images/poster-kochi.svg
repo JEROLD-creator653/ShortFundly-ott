@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none">
+  <rect width="1600" height="900" fill="#040404"/>
+  <path d="M0 620C250 520 500 700 800 620C1050 550 1300 420 1600 620V900H0V620Z" fill="#161616"/>
+  <text x="120" y="170" fill="#FB5A32" font-size="58" font-family="Arial">Last Call, Kochi</text>
+</svg>

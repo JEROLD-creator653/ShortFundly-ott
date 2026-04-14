@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none">
+  <rect width="1600" height="900" fill="#070707"/>
+  <path d="M0 820L1600 300V900H0V820Z" fill="#151515"/>
+  <path d="M0 760L1600 240" stroke="#FB5A32" stroke-width="10" stroke-dasharray="16 20"/>
+  <text x="120" y="180" fill="#FB5A32" font-size="62" font-family="Arial">The Fifth Platform</text>
+</svg>

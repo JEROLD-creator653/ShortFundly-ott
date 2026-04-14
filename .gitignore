@@ -1,0 +1,10 @@
+# Local build and dependency artifacts
+shortfundly-app/node_modules/
+shortfundly-app/.next/
+shortfundly-app/.turbo/
+
+# Windows junction alias to same app folder
+shortfundly_app/
+
+# Temporary extraction/debug files
+_tmp_dce.js

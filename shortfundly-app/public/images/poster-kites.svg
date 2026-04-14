@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none">
+  <rect width="1600" height="900" fill="#030303"/>
+  <path d="M150 740L520 250L800 680L1150 220L1450 740" stroke="#FB5A32" stroke-width="8"/>
+  <text x="120" y="180" fill="#FB5A32" font-size="58" font-family="Arial">Paper Kites 2040</text>
+</svg>
