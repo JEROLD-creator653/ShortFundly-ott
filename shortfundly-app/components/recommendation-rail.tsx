@@ -141,8 +141,8 @@ export function RecommendationRail({ films, currentContentId }: Props) {
   if (!rankedFilms.length) return null;
 
   return (
-    <section className="mt-6">
-      <h2 className="mb-4 text-xl uppercase tracking-wider text-white [font-family:var(--font-heading)]">
+    <section className="mt-8">
+      <h2 className="mb-5 text-2xl uppercase tracking-wider text-white [font-family:var(--font-heading)] md:text-3xl">
         You may also like ✨
       </h2>
       {loading ? (
@@ -150,7 +150,7 @@ export function RecommendationRail({ films, currentContentId }: Props) {
           {Array.from({ length: 4 }).map((_, idx) => (
             <div
               key={`you-may-like-skeleton-${idx}`}
-              className="w-64 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70"
+              className="w-72 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70"
             >
               <div className="aspect-video animate-pulse bg-zinc-800/70" />
               <div className="space-y-2 p-4">
@@ -179,7 +179,7 @@ function RecommendCard({ film }: { film: Film }) {
   return (
     <Link
       href={watchPath}
-      className="group relative flex-shrink-0 w-64 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70 transition-all duration-300 hover:border-primary/70 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(251,90,50,0.18)]"
+      className="group relative w-72 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70 transition-all duration-300 hover:-translate-y-1 hover:border-primary/70 hover:shadow-[0_8px_24px_rgba(251,90,50,0.18)]"
     >
       <div className="relative aspect-video overflow-hidden bg-zinc-900">
         {isSvg ? (
@@ -194,7 +194,7 @@ function RecommendCard({ film }: { film: Film }) {
             src={imgSrc}
             alt={film.title}
             fill
-            sizes="256px"
+            sizes="288px"
             unoptimized
             className="object-cover transition duration-500 group-hover:scale-105"
             onError={() => setImgSrc("/images/poster-wings.svg")}
@@ -207,8 +207,8 @@ function RecommendCard({ film }: { film: Film }) {
           </span>
         )}
       </div>
-      <div className="p-4 space-y-1">
-        <p className="text-base font-semibold text-white line-clamp-1">{film.title}</p>
+      <div className="space-y-1 p-5">
+        <p className="line-clamp-1 text-lg font-semibold text-white">{film.title}</p>
         <p className="text-sm text-zinc-400">{film.genre} · {film.year}</p>
       </div>
     </Link>

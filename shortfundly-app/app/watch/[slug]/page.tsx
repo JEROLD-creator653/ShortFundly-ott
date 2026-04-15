@@ -23,8 +23,8 @@ export default async function WatchPage({ params }: Props) {
   const shareUrl = encodeURIComponent(`https://web.shortfundly.com/watch/${film.slug}`);
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 pb-12 md:px-8 lg:grid-cols-3">
-      <section className="space-y-4 lg:col-span-2">
+    <div className="mx-auto grid w-full max-w-[1760px] gap-8 px-4 pb-12 md:px-8 lg:grid-cols-12">
+      <section className="space-y-6 lg:col-span-9">
         <VideoPlayer
           slug={film.slug}
           title={film.title}
@@ -32,17 +32,17 @@ export default async function WatchPage({ params }: Props) {
           synopsis={film.synopsis}
           details={`${film.genre} · ${film.duration} · ${film.year} · Rating ${film.rating}`}
         />
-        <div id="movie-details" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
-          <h1 className="text-4xl uppercase leading-none [font-family:var(--font-heading)]">{film.title}</h1>
-          <p className="mt-2 text-sm text-zinc-400">
+        <div id="movie-details" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-7 lg:min-h-[250px]">
+          <h1 className="text-4xl uppercase leading-none [font-family:var(--font-heading)] md:text-5xl">{film.title}</h1>
+          <p className="mt-3 text-base text-zinc-400">
             {film.genre} · {film.duration} · {film.year} · Rating {film.rating}
           </p>
-          <p className="mt-3 text-zinc-300">{film.synopsis}</p>
-          {film.festival ? <p className="mt-3 text-sm text-primary">{film.festival}</p> : null}
+          <p className="mt-5 text-lg leading-relaxed text-zinc-300">{film.synopsis}</p>
+          {film.festival ? <p className="mt-4 text-sm text-primary">{film.festival}</p> : null}
         </div>
         <RecommendationRail films={related} currentContentId={film.id ?? film.slug} />
       </section>
-      <aside className="space-y-4">
+      <aside className="space-y-4 lg:col-span-3">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
           <h2 className="text-2xl uppercase [font-family:var(--font-heading)]">Share</h2>
           <div className="mt-4 grid gap-2">
