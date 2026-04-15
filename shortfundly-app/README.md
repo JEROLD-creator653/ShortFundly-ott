@@ -19,7 +19,7 @@ This is a full Next.js (App Router) frontend implementation rebuilt from the rec
 - Gemini-powered customer support widget with chat persistence in MongoDB
 - Admin support chat dashboard at `/admin/support-chats`
 - AI poster generator (styles + title overlay) at `/admin/posters`
-- FFmpeg teaser generation queue at `/admin/teasers`
+- Cinematic AI teaser studio with Shotstack render orchestration at `/admin/teasers`
 
 ## Run locally
 
@@ -42,7 +42,8 @@ Copy `.env.example` to `.env.local` and populate the values you need:
 - `GEMINI_API_KEY` for AI customer support replies
 - `ADMIN_DASHBOARD_TOKEN` for admin support dashboard access control
 - `OPENAI_API_KEY` and `POSTER_IMAGE_MODEL` for poster generation
-- `FFMPEG_BIN` and `TEASER_BACKGROUND_MUSIC_PATH` for teaser rendering
+- `SHOTSTACK_API_KEY` and `SHOTSTACK_HOST` for teaser rendering
+- `PUBLIC_ASSET_BASE_URL` (or `NEXT_PUBLIC_APP_URL`) to expose uploaded teaser assets for Shotstack
 
 ## Notes
 

@@ -148,7 +148,8 @@ export function PosterStudio() {
           <h3 className="text-xl font-semibold">Quick Export Notes</h3>
           <ul className="mt-4 space-y-3 text-sm text-zinc-300">
             <li>Generated image size: 1024x1536, optimized for OTT poster slots.</li>
-            <li>Title and genre overlays are auto-composited for immediate publishing.</li>
+            <li>Scene direction is generated from your description to keep visuals story-accurate.</li>
+            <li>Title and genre placement are dynamically planned for each poster composition.</li>
             <li>Use Download to share with social and internal campaign teams.</li>
           </ul>
         </div>

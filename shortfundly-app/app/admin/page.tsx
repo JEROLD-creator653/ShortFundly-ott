@@ -15,8 +15,8 @@ const modules = [
   },
   {
     href: "/admin/teasers",
-    title: "Teaser Generator",
-    description: "Queue FFmpeg teaser jobs for reels, shorts, and widescreen exports."
+    title: "Cinematic Teaser AI",
+    description: "Generate premium OTT promo teasers with Shotstack renders, AI script, and voice-over."
   }
 ];
 
@@ -25,7 +25,7 @@ export default function AdminHomePage() {
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-14 md:px-8">
       <h1 className="text-6xl uppercase leading-none [font-family:var(--font-heading)]">AI Admin Studio</h1>
       <p className="mt-3 max-w-2xl text-sm text-zinc-400">
-        Manage support operations, poster creation, and teaser rendering from one production dashboard.
+        Manage support operations, poster creation, and cinematic teaser rendering from one production dashboard.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">

@@ -2,15 +2,15 @@ import type { PosterStyle } from "@/lib/models/poster";
 
 const STYLE_PROMPTS: Record<PosterStyle, string> = {
   thriller:
-    "dark cinematic lighting, moody contrast, suspenseful framing, smoke textures, premium OTT poster design",
+    "realistic cinematic thriller look, tense atmosphere, practical lighting, noir-grade contrast, emotionally grounded scene",
   romantic:
-    "warm cinematic tones, emotional storytelling mood, soft bokeh lights, elegant movie poster composition",
+    "realistic cinematic romance look, warm natural light, intimate character emotion, poetic but grounded framing",
   action:
-    "high energy action composition, dramatic lighting, motion blur, epic blockbuster OTT poster style",
+    "realistic cinematic action look, dynamic camera energy, believable motion, dramatic practical lighting, high detail",
   festival:
-    "arthouse festival cinema aesthetic, rich film grain texture, auteur visual tone, premium indie film poster",
+    "realistic arthouse festival look, expressive framing, authentic texture, human-centered visual storytelling",
   netflix:
-    "high-end OTT key art style, bold center subject, clean premium typography space, global streaming quality"
+    "premium global OTT key-art look, hyper-realistic detail, polished cinematic lighting, high production value"
 };
 
 export function buildPosterPrompt(input: {
@@ -22,11 +22,15 @@ export function buildPosterPrompt(input: {
   const stylePrompt = STYLE_PROMPTS[input.style];
 
   return [
-    "Create a professional vertical movie poster for OTT release.",
+    "Create a photorealistic vertical movie poster for OTT release.",
     `Movie title: ${input.title}`,
     `Genre: ${input.genre}`,
-    `Story hook: ${input.description}`,
+    `Mandatory scenario to visualize exactly: ${input.description}`,
     `Visual style: ${stylePrompt}`,
+    "Focus on one specific cinematic moment from the scenario, not an abstract background.",
+    "Use realistic people/locations/props consistent with the description.",
+    "Avoid flat gradients, vector graphics, abstract geometric art, and generic background-only posters.",
+    "Keep clean negative space for later title placement.",
     "Do not include any text, logos, watermark, or extra title in image."
   ].join("\n");
 }

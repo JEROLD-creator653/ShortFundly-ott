@@ -33,16 +33,20 @@ export type LocalPoster = {
   updatedAt: string;
 };
 
-export type LocalTeaserJob = {
+export type LocalTeaserRender = {
   _id: string;
   title: string;
-  caption?: string;
-  format: "shorts" | "reel" | "widescreen";
-  inputPath: string;
+  genre: string;
+  language: string;
+  duration: 15 | 30 | 45 | 60;
+  mood: "epic" | "thriller" | "emotional" | "action" | "mystery";
+  voiceStyle: "deep-male" | "cinematic-female" | "energetic" | "suspense";
+  includeSubtitles: boolean;
+  script: string;
+  shotstackRenderId?: string;
   outputUrl?: string;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: "queued" | "processing" | "rendering" | "completed" | "failed";
   errorMessage?: string;
-  includeVoiceover: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -50,7 +54,7 @@ export type LocalTeaserJob = {
 const storageDir = path.join(process.cwd(), "storage", "local-db");
 const supportFile = path.join(storageDir, "support-chats.json");
 const postersFile = path.join(storageDir, "posters.json");
-const teasersFile = path.join(storageDir, "teaser-jobs.json");
+const teaserRendersFile = path.join(storageDir, "teaser-renders.json");
 
 async function ensureStorage() {
   await fs.mkdir(storageDir, { recursive: true });
@@ -157,10 +161,10 @@ export async function listPosters(limit = 120) {
   return posters.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }
 
-export async function createTeaserJob(record: Omit<LocalTeaserJob, "_id" | "createdAt" | "updatedAt">) {
-  const jobs = await readJson<LocalTeaserJob[]>(teasersFile, []);
+export async function createTeaserRender(record: Omit<LocalTeaserRender, "_id" | "createdAt" | "updatedAt">) {
+  const jobs = await readJson<LocalTeaserRender[]>(teaserRendersFile, []);
   const now = new Date().toISOString();
-  const job: LocalTeaserJob = {
+  const job: LocalTeaserRender = {
     _id: randomUUID(),
     ...record,
     createdAt: now,
@@ -168,17 +172,20 @@ export async function createTeaserJob(record: Omit<LocalTeaserJob, "_id" | "crea
   };
 
   jobs.unshift(job);
-  await writeJson(teasersFile, jobs);
+  await writeJson(teaserRendersFile, jobs);
   return job;
 }
 
-export async function listTeaserJobs(limit = 120) {
-  const jobs = await readJson<LocalTeaserJob[]>(teasersFile, []);
+export async function listTeaserRenders(limit = 160) {
+  const jobs = await readJson<LocalTeaserRender[]>(teaserRendersFile, []);
   return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }
 
-export async function updateTeaserJob(jobId: string, updates: Partial<Pick<LocalTeaserJob, "status" | "outputUrl" | "errorMessage">>) {
-  const jobs = await readJson<LocalTeaserJob[]>(teasersFile, []);
+export async function updateTeaserRender(
+  jobId: string,
+  updates: Partial<Pick<LocalTeaserRender, "status" | "outputUrl" | "errorMessage" | "shotstackRenderId" | "script">>
+) {
+  const jobs = await readJson<LocalTeaserRender[]>(teaserRendersFile, []);
   const index = jobs.findIndex((item) => item._id === jobId);
   if (index === -1) return null;
 
@@ -188,6 +195,6 @@ export async function updateTeaserJob(jobId: string, updates: Partial<Pick<Local
     updatedAt: new Date().toISOString()
   };
 
-  await writeJson(teasersFile, jobs);
+  await writeJson(teaserRendersFile, jobs);
   return jobs[index];
 }
