@@ -22,6 +22,21 @@ type ContinueItem = {
 };
 
 const KEY = "shortfundly:continue";
+const MIN_RESUME_SECONDS = 10;
+const END_BUFFER_SECONDS = 15;
+
+function readContinueList(): ContinueItem[] {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as ContinueItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeContinueList(items: ContinueItem[]) {
+  localStorage.setItem(KEY, JSON.stringify(items.slice(0, 10)));
+}
 
 export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -89,21 +104,12 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
       if (!video.duration || Number.isNaN(video.duration)) return;
       const progress = (video.currentTime / video.duration) * 100;
 
-      const list = (() => {
-        try {
-          const raw = localStorage.getItem(KEY);
-          return raw ? (JSON.parse(raw) as ContinueItem[]) : [];
-        } catch {
-          return [];
-        }
-      })();
-
-      const next = [
-        { slug, title, progress },
-        ...list.filter((item) => item.slug !== slug)
-      ].slice(0, 10);
-
-      localStorage.setItem(KEY, JSON.stringify(next));
+      const list = readContinueList();
+      if (progress >= 98) {
+        writeContinueList(list.filter((item) => item.slug !== slug));
+      } else {
+        writeContinueList([{ slug, title, progress }, ...list.filter((item) => item.slug !== slug)]);
+      }
       pushSubtitleFromCue();
 
       if (video.currentTime - lastPersistRef.current >= 5) {
@@ -153,7 +159,17 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   }, [showResumePrompt]);
 
   useEffect(() => {
-    if (!session || session.resumePosition < 5) return;
+    if (!session || session.resumePosition < MIN_RESUME_SECONDS) return;
+
+    const hasDuration = Number.isFinite(session.totalDuration) && session.totalDuration > 0;
+    if (hasDuration) {
+      const remaining = session.totalDuration - session.resumePosition;
+      const watchedRatio = session.resumePosition / session.totalDuration;
+      if (remaining <= END_BUFFER_SECONDS || watchedRatio >= 0.98) {
+        return;
+      }
+    }
+
     setShowResumePrompt(true);
   }, [session]);
 
@@ -194,6 +210,8 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
       video.currentTime = 0;
     }
     SessionStore.clear(slug, episodeId);
+    writeContinueList(readContinueList().filter((item) => item.slug !== slug));
+    lastPersistRef.current = 0;
     playVideo();
   };
 

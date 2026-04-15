@@ -40,7 +40,7 @@ export default async function WatchPage({ params }: Props) {
           <p className="mt-3 text-zinc-300">{film.synopsis}</p>
           {film.festival ? <p className="mt-3 text-sm text-primary">{film.festival}</p> : null}
         </div>
-        <RecommendationRail films={related} />
+        <RecommendationRail films={related} currentContentId={film.id ?? film.slug} />
       </section>
       <aside className="space-y-4">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">

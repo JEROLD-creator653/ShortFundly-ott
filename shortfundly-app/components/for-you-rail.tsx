@@ -5,11 +5,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Film } from "@/lib/types";
 
-type Props = {
-  films: Film[];
-  currentContentId?: string;
-};
-
 type ContinueItem = {
   slug: string;
   title: string;
@@ -30,10 +25,19 @@ type RecommendationItem = {
   synopsis: string;
   festival?: string;
   video_url: string;
+  score: number;
 };
 
 type RecommendationResponse = {
+  user_id: string;
+  content_id?: string;
+  count: number;
+  latency_ms: number;
   items: RecommendationItem[];
+};
+
+type Props = {
+  fallbackFilms: Film[];
 };
 
 const CONTINUE_KEY = "shortfundly:continue";
@@ -69,34 +73,33 @@ function toFilm(item: RecommendationItem): Film {
   };
 }
 
-export function RecommendationRail({ films, currentContentId }: Props) {
+export function ForYouRail({ fallbackFilms }: Props) {
   const [loading, setLoading] = useState(true);
-  const [recommendedFilms, setRecommendedFilms] = useState<Film[]>([]);
-  const fallback = useMemo(() => films.slice(0, 12), [films]);
+  const [films, setFilms] = useState<Film[]>([]);
+
+  const fallback = useMemo(() => fallbackFilms.slice(0, 12), [fallbackFilms]);
 
   useEffect(() => {
     let active = true;
 
-    const load = async () => {
+    async function loadRecommendations() {
       setLoading(true);
       try {
         const userId = getOrCreateUserId();
         const raw = localStorage.getItem(CONTINUE_KEY);
-        const parsed = raw ? (JSON.parse(raw) as ContinueItem[]) : [];
-        const watchedIds = parsed.map((item) => item.slug).filter(Boolean);
+        const watched = raw ? (JSON.parse(raw) as ContinueItem[]) : [];
 
+        const watchedIds = watched.map((item) => item.slug).filter(Boolean);
+        const contentSeed = watchedIds[0] ?? "";
         const endpointBase = process.env.NEXT_PUBLIC_RECOMMENDER_API_URL || "http://127.0.0.1:8001";
+
         const query = new URLSearchParams({
           user_id: userId,
           limit: "12"
         });
 
-        if (currentContentId) {
-          query.set("content_id", currentContentId);
-        }
-        if (watchedIds.length) {
-          query.set("watched_ids", watchedIds.join(","));
-        }
+        if (contentSeed) query.set("content_id", contentSeed);
+        if (watchedIds.length) query.set("watched_ids", watchedIds.join(","));
 
         const response = await fetch(`${endpointBase}/recommendations?${query.toString()}`, {
           method: "GET",
@@ -108,48 +111,44 @@ export function RecommendationRail({ films, currentContentId }: Props) {
         }
 
         const payload = (await response.json()) as RecommendationResponse;
-        const next = payload.items
-          .map(toFilm)
-          .filter((film) => (film.id ?? film.slug) !== currentContentId)
-          .slice(0, 12);
+        const next = payload.items.map(toFilm);
 
         if (active) {
-          setRecommendedFilms(next.length ? next : fallback);
+          setFilms(next.length ? next : fallback);
         }
       } catch {
         if (active) {
-          setRecommendedFilms(fallback);
+          setFilms(fallback);
         }
       } finally {
         if (active) {
           setLoading(false);
         }
       }
-    };
+    }
 
-    void load();
+    loadRecommendations();
+
     return () => {
       active = false;
     };
-  }, [currentContentId, fallback]);
+  }, [fallback]);
 
-  const rankedFilms = useMemo(() => {
-    if (recommendedFilms.length) return recommendedFilms;
-    return fallback;
-  }, [recommendedFilms, fallback]);
-
-  if (!rankedFilms.length) return null;
+  const display = films.length ? films : fallback;
+  if (!display.length && !loading) return null;
 
   return (
-    <section className="mt-6">
-      <h2 className="mb-4 text-xl uppercase tracking-wider text-white [font-family:var(--font-heading)]">
-        You may also like ✨
-      </h2>
+    <section className="mx-auto w-full max-w-7xl px-4 py-7 md:px-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-2xl uppercase tracking-wider text-white [font-family:var(--font-heading)]">For You</h2>
+        <span className="text-sm text-zinc-400">Personalized picks</span>
+      </div>
+
       {loading ? (
         <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-1">
-          {Array.from({ length: 4 }).map((_, idx) => (
+          {Array.from({ length: 6 }).map((_, idx) => (
             <div
-              key={`you-may-like-skeleton-${idx}`}
+              key={`for-you-skeleton-${idx}`}
               className="w-64 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70"
             >
               <div className="aspect-video animate-pulse bg-zinc-800/70" />
@@ -162,8 +161,8 @@ export function RecommendationRail({ films, currentContentId }: Props) {
         </div>
       ) : (
         <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-1">
-          {rankedFilms.map((film) => (
-            <RecommendCard key={film.id ?? film.slug} film={film} />
+          {display.map((film) => (
+            <ForYouCard key={film.id ?? film.slug} film={film} />
           ))}
         </div>
       )}
@@ -171,15 +170,14 @@ export function RecommendationRail({ films, currentContentId }: Props) {
   );
 }
 
-function RecommendCard({ film }: { film: Film }) {
-  const watchPath = `/watch/${film.id ?? film.slug}`;
+function ForYouCard({ film }: { film: Film }) {
   const [imgSrc, setImgSrc] = useState(film.thumbnail);
   const isSvg = imgSrc.endsWith(".svg");
 
   return (
     <Link
-      href={watchPath}
-      className="group relative flex-shrink-0 w-64 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70 transition-all duration-300 hover:border-primary/70 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(251,90,50,0.18)]"
+      href={`/watch/${film.id ?? film.slug}`}
+      className="group relative w-64 flex-shrink-0 overflow-hidden rounded-xl border border-zinc-800/70 bg-zinc-950/70 transition-all duration-300 hover:-translate-y-1 hover:border-primary/70 hover:shadow-[0_8px_24px_rgba(251,90,50,0.18)]"
     >
       <div className="relative aspect-video overflow-hidden bg-zinc-900">
         {isSvg ? (
@@ -201,15 +199,13 @@ function RecommendCard({ film }: { film: Film }) {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-        {film.premium && (
-          <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">
-            Premium
-          </span>
-        )}
       </div>
-      <div className="p-4 space-y-1">
-        <p className="text-base font-semibold text-white line-clamp-1">{film.title}</p>
-        <p className="text-sm text-zinc-400">{film.genre} · {film.year}</p>
+
+      <div className="space-y-1 p-4">
+        <p className="line-clamp-1 text-base font-semibold text-white">{film.title}</p>
+        <p className="text-sm text-zinc-400">
+          {film.genre} · {film.year}
+        </p>
       </div>
     </Link>
   );
