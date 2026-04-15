@@ -69,6 +69,18 @@ export type LocalUserSubscription = {
   renewalAt: string;
 };
 
+export type LocalMyListItem = {
+  slug: string;
+  title: string;
+  thumbnail: string;
+  genre: string;
+  duration: string;
+  year: number;
+  rating: number;
+  premium: boolean;
+  addedAt: string;
+};
+
 export type LocalUser = {
   _id: string;
   role: DemoRole;
@@ -81,6 +93,7 @@ export type LocalUser = {
     favoriteGenres: string[];
   };
   subscription: LocalUserSubscription;
+  myList: LocalMyListItem[];
   activity: LocalUserActivity;
   createdAt: string;
   updatedAt: string;
@@ -118,6 +131,7 @@ function buildDefaultUser(overrides: Partial<LocalUser>): LocalUser {
       startedAt: overrides.subscription?.startedAt || now,
       renewalAt: overrides.subscription?.renewalAt || dateAfterDays(30)
     },
+    myList: overrides.myList || [],
     activity: {
       totalWatchMinutes: overrides.activity?.totalWatchMinutes ?? 90,
       last30DaysWatchMinutes: overrides.activity?.last30DaysWatchMinutes ?? 90,
@@ -655,4 +669,59 @@ export async function recordDemoUserActivity(
 
   await writeJson(usersFile, users);
   return safeUser(users[index]);
+}
+
+export async function getDemoUserMyList(userId: string) {
+  const users = await ensureDemoUsers();
+  const user = users.find((item) => item._id === userId);
+  if (!user) return null;
+
+  return [...(user.myList || [])].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+}
+
+export async function addDemoUserMyListItem(
+  userId: string,
+  item: Omit<LocalMyListItem, "addedAt">
+) {
+  const users = await ensureDemoUsers();
+  const index = users.findIndex((u) => u._id === userId);
+  if (index === -1) return null;
+
+  const user = users[index];
+  const existing = user.myList || [];
+  if (existing.some((entry) => entry.slug === item.slug)) {
+    return [...existing].sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+  }
+
+  const nextItem: LocalMyListItem = {
+    ...item,
+    addedAt: new Date().toISOString()
+  };
+
+  users[index] = {
+    ...user,
+    myList: [nextItem, ...existing],
+    updatedAt: new Date().toISOString()
+  };
+
+  await writeJson(usersFile, users);
+  return users[index].myList;
+}
+
+export async function removeDemoUserMyListItem(userId: string, slug: string) {
+  const users = await ensureDemoUsers();
+  const index = users.findIndex((u) => u._id === userId);
+  if (index === -1) return null;
+
+  const user = users[index];
+  const nextList = (user.myList || []).filter((item) => item.slug !== slug);
+
+  users[index] = {
+    ...user,
+    myList: nextList,
+    updatedAt: new Date().toISOString()
+  };
+
+  await writeJson(usersFile, users);
+  return nextList;
 }

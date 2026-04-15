@@ -14,6 +14,7 @@ type Props = {
   source: string;
   synopsis?: string;
   details?: string;
+  openedFromContinue?: boolean;
 };
 
 type ContinueItem = {
@@ -39,7 +40,7 @@ function writeContinueList(items: ContinueItem[]) {
   localStorage.setItem(KEY, JSON.stringify(items.slice(0, 10)));
 }
 
-export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
+export function VideoPlayer({ slug, title, source, synopsis, details, openedFromContinue = false }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
   const lastPersistRef = useRef(0);
   const lastActivitySyncRef = useRef(0);
@@ -244,6 +245,7 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   }, [showResumePrompt]);
 
   useEffect(() => {
+    if (!openedFromContinue) return;
     if (!session || session.resumePosition < MIN_RESUME_SECONDS) return;
 
     const hasDuration = Number.isFinite(session.totalDuration) && session.totalDuration > 0;
@@ -256,7 +258,7 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
     }
 
     setShowResumePrompt(true);
-  }, [session]);
+  }, [openedFromContinue, session]);
 
   const playVideo = () => {
     dismissRecap();

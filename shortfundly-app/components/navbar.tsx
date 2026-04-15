@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 type SearchResult = {
   id?: string;
@@ -18,7 +19,7 @@ type SearchResult = {
 const links = [
   { href: "/", label: "Home" },
   { href: "/explore", label: "Explore" },
-  { href: "/festival", label: "Festival" },
+  { href: "/my-list", label: "Watch List" },
   { href: "/submit", label: "Submit" }
 ];
 
@@ -191,11 +192,7 @@ export function Navbar() {
     router.refresh();
   };
 
-  const planLabel = authState.user?.subscription?.plan
-    ? `${authState.user.subscription.plan.toUpperCase()} Plan`
-    : "Free Plan";
-
-  const getWatchHref = (item: SearchResult) => `/watch/${item.id ?? item.slug}`;
+   const getWatchHref = (item: SearchResult) => `/watch/${item.id ?? item.slug}`;
 
   if (isLoginRoute) {
     return null;
@@ -317,22 +314,37 @@ export function Navbar() {
             <>
               <Link
                 href="/profile"
-                aria-label="Open account"
-                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
+                aria-label="Manage subscription"
+                className="flex h-11 items-center gap-1.5 rounded-full border border-[#d97706]/60 bg-[#d97706]/10 px-5 text-sm font-semibold tracking-wide text-[#d97706] transition hover:bg-[#d97706]/20 hover:border-[#d97706]"
               >
-                {planLabel}
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px] -mt-0.5" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 18h18v2H3zM4 6l4.5 4L12 3l3.5 7L20 6v10H4V6z"/>
+                </svg>
+                Subscribe
               </Link>
-              <button
-                aria-label="Sign out"
-                onClick={handleLogout}
-                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
-                type="button"
+              <Link
+                href="/profile"
+                aria-label="Open profile"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950/60 text-zinc-200 transition hover:border-primary hover:text-primary"
               >
-                Logout
-              </button>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </Link>
             </>
           ) : (
             <>
+              <Link
+                href="/profile"
+                aria-label="Manage subscription"
+                className="flex h-11 items-center gap-1.5 rounded-full border border-[#d97706]/60 bg-[#d97706]/10 px-5 text-sm font-semibold tracking-wide text-[#d97706] transition hover:bg-[#d97706]/20 hover:border-[#d97706]"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px] -mt-0.5" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 18h18v2H3zM4 6l4.5 4L12 3l3.5 7L20 6v10H4V6z"/>
+                </svg>
+                Subscribe
+              </Link>
               <Link
                 href="/login"
                 aria-label="User login"

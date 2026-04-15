@@ -123,6 +123,14 @@ export function ProfileDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/";
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid gap-6 lg:grid-cols-3">
@@ -218,6 +226,22 @@ export function ProfileDashboard() {
           </div>
         </form>
         {message ? <p className="mt-4 text-sm text-zinc-300">{message}</p> : null}
+      </section>
+
+      <section className="rounded-2xl border border-red-900/40 bg-gradient-to-br from-red-950/30 to-zinc-950/80 p-6">
+        <h2 className="text-3xl uppercase [font-family:var(--font-heading)]">Account Actions</h2>
+        <p className="mt-3 text-sm text-zinc-300">
+          Sign out securely from your current session. You can log back in anytime using your demo credentials.
+        </p>
+        <div className="mt-5">
+          <button
+            onClick={handleLogout}
+            type="button"
+            className="rounded-full border border-red-500/70 bg-red-600 px-6 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-red-500 hover:border-red-400 active:scale-[0.98]"
+          >
+            Logout
+          </button>
+        </div>
       </section>
       </div>
 
