@@ -89,7 +89,7 @@ export function Hero({ features }: Props) {
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/65" />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-end px-4 pb-12 pt-28 md:min-h-[100svh] md:px-8 md:pb-36 md:pt-32">
-        <div className="max-w-2xl animate-rise opacity-60 transition-opacity duration-300 group-hover/hero-ui:opacity-100">
+        <div className="max-w-2xl animate-rise opacity-85 transition-opacity duration-500 group-hover/hero-ui:opacity-100">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">Free Trial</p>
           <h1 className="max-w-[16ch] text-5xl uppercase leading-[0.9] text-white md:text-7xl [font-family:var(--font-heading)]">
             {displayTitle}
@@ -132,7 +132,7 @@ export function Hero({ features }: Props) {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 hidden md:block">
         <div
-          className="group mx-auto flex w-full max-w-7xl items-center justify-end gap-3 px-8 opacity-50 transition-opacity duration-200 group-hover:opacity-100"
+          className="group mx-auto flex w-full max-w-7xl items-center justify-end gap-3 px-8 opacity-75 transition-opacity duration-500 hover:opacity-100"
           onMouseEnter={() => setIsBarHovered(true)}
           onMouseLeave={() => setIsBarHovered(false)}
         >
@@ -148,16 +148,18 @@ export function Hero({ features }: Props) {
           <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-zinc-700/90 bg-black/50 p-3 shadow-2xl shadow-black/30 backdrop-blur">
             {previewItems.map((film, index) => {
               const realIndex = windowStart + index;
+              const isActive = realIndex === safeActiveIndex;
               return (
                 <button
                   key={film.slug}
                   type="button"
                   aria-label={`Show ${film.title} trailer`}
                   onClick={() => setActiveIndex(realIndex)}
-                  className={`relative h-14 w-24 overflow-hidden rounded-md border transition duration-200 hover:z-10 hover:scale-105 ${
-                    realIndex === safeActiveIndex
-                      ? "border-white ring-1 ring-white/60"
-                      : "border-zinc-600 hover:border-zinc-300"
+                  style={{ perspective: "600px" }}
+                  className={`relative h-14 w-24 overflow-hidden rounded-lg border transition-all duration-300 ease-out ${
+                    isActive
+                      ? "border-white ring-1 ring-white/60 opacity-100 scale-110 shadow-lg shadow-black/50"
+                      : "border-zinc-700/80 opacity-80 hover:opacity-100 hover:scale-[1.18] hover:border-zinc-300 hover:shadow-xl hover:shadow-black/40 hover:z-10"
                   }`}
                 >
                   {film.thumbnail.endsWith('.svg') ? (

@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { RecapCard } from "@/components/RecapCard";
+import { SubtitleOverlay } from "@/components/SubtitleOverlay";
+import { useContextualResume } from "@/hooks/useContextualResume";
+import { SessionStore } from "@/lib/SessionStore";
+import type { SceneMeta, SubtitleChunk, WatchSession } from "@/types/watchSession";
 
 type Props = {
   slug: string;
   title: string;
   source: string;
+  synopsis?: string;
+  details?: string;
 };
 
 type ContinueItem = {
@@ -16,12 +23,67 @@ type ContinueItem = {
 
 const KEY = "shortfundly:continue";
 
-export function VideoPlayer({ slug, title, source }: Props) {
+export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
+  const lastPersistRef = useRef(0);
+  const [subtitleChunks, setSubtitleChunks] = useState<SubtitleChunk[]>([]);
+  const [sceneMetadata, setSceneMetadata] = useState<SceneMeta[]>([]);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const episodeId = useMemo(() => "S01E01", []);
+  const { session, dismissRecap } = useContextualResume(slug, episodeId);
 
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
+
+    const pushSubtitleFromCue = () => {
+      const track = video.textTracks?.[0];
+      if (!track?.activeCues?.length) return;
+
+      const cue = track.activeCues[0] as VTTCue;
+      if (!cue?.text) return;
+      const [maybeSpeaker, ...rest] = cue.text.split(":");
+      const speaker = rest.length ? maybeSpeaker.trim() : "Speaker";
+      const text = rest.length ? rest.join(":").trim() : cue.text.trim();
+
+      setSubtitleChunks((prev) => {
+        const next: SubtitleChunk = {
+          start: cue.startTime ?? Math.max(0, video.currentTime - 2),
+          end: cue.endTime ?? video.currentTime,
+          speaker,
+          text
+        };
+
+        if (prev.length && prev[prev.length - 1]?.text === next.text && prev[prev.length - 1]?.speaker === next.speaker) {
+          return prev;
+        }
+        return [...prev, next].slice(-40);
+      });
+    };
+
+    const saveContextualSession = () => {
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+      const currentTime = Math.max(0, video.currentTime || 0);
+      const watchedEpisodeList = [episodeId];
+
+      const builtSession: WatchSession = {
+        contentId: slug,
+        episodeId,
+        episodeTitle: title,
+        contentSynopsis: synopsis,
+        contentDetails: details,
+        seasonNumber: 1,
+        episodeNumber: 1,
+        resumePosition: currentTime,
+        totalDuration: duration,
+        lastWatchedAt: Date.now(),
+        watchedEpisodes: watchedEpisodeList,
+        sceneMetadata,
+        subtitleChunks
+      };
+
+      SessionStore.save(builtSession);
+    };
 
     const onProgress = () => {
       if (!video.duration || Number.isNaN(video.duration)) return;
@@ -42,21 +104,114 @@ export function VideoPlayer({ slug, title, source }: Props) {
       ].slice(0, 10);
 
       localStorage.setItem(KEY, JSON.stringify(next));
+      pushSubtitleFromCue();
+
+      if (video.currentTime - lastPersistRef.current >= 5) {
+        saveContextualSession();
+        lastPersistRef.current = video.currentTime;
+      }
+
+      setSceneMetadata((prev) => {
+        const marker = Math.floor(video.currentTime / 60) * 60;
+        if (marker < 0) return prev;
+        if (prev.some((scene) => scene.timestamp === marker)) return prev;
+
+        const scene: SceneMeta = {
+          timestamp: marker,
+          description: `Playback reached ${Math.floor(marker / 60)}m in ${title}.`,
+          characters: [...new Set(subtitleChunks.slice(-8).map((chunk) => chunk.speaker).filter(Boolean))],
+          tags: ["playback"]
+        };
+        return [...prev, scene].slice(-25);
+      });
+    };
+
+    const onPause = () => {
+      saveContextualSession();
+    };
+
+    const onBeforeUnload = () => {
+      saveContextualSession();
     };
 
     video.addEventListener("timeupdate", onProgress);
-    return () => video.removeEventListener("timeupdate", onProgress);
-  }, [slug, title]);
+    video.addEventListener("pause", onPause);
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      video.removeEventListener("timeupdate", onProgress);
+      video.removeEventListener("pause", onPause);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [details, episodeId, sceneMetadata, slug, subtitleChunks, synopsis, title]);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !showResumePrompt) return;
+
+    video.pause();
+  }, [showResumePrompt]);
+
+  useEffect(() => {
+    if (!session || session.resumePosition < 5) return;
+    setShowResumePrompt(true);
+  }, [session]);
+
+  const playVideo = () => {
+    dismissRecap();
+    setShowResumePrompt(false);
+    ref.current?.play().catch(() => {
+      // Browser autoplay restrictions may prevent this.
+    });
+  };
+
+  const resumePlayback = () => {
+    const video = ref.current;
+    if (!video || !session) {
+      playVideo();
+      return;
+    }
+
+    const resumeAt = Math.max(0, Math.min(session.resumePosition, Math.max(0, (video.duration || session.totalDuration) - 1)));
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+      video.currentTime = resumeAt;
+      playVideo();
+      return;
+    }
+
+    const onLoaded = () => {
+      video.currentTime = resumeAt;
+      playVideo();
+      video.removeEventListener("loadedmetadata", onLoaded);
+    };
+    video.addEventListener("loadedmetadata", onLoaded);
+    video.load();
+  };
+
+  const startFromBeginning = () => {
+    const video = ref.current;
+    if (video) {
+      video.currentTime = 0;
+    }
+    SessionStore.clear(slug, episodeId);
+    playVideo();
+  };
 
   return (
-    <video
-      ref={ref}
-      controls
-      playsInline
-      className="aspect-video w-full rounded-2xl border border-zinc-800 bg-black"
-      src={source}
-    >
-      <track kind="captions" />
-    </video>
+    <div className="relative">
+      <video
+        ref={ref}
+        controls={!showResumePrompt}
+        playsInline
+        className="aspect-video w-full rounded-2xl border border-zinc-800 bg-black"
+        src={source}
+      >
+        <track kind="captions" />
+      </video>
+      <SubtitleOverlay subtitleChunks={subtitleChunks} watchedEpisodes={session?.watchedEpisodes ?? [episodeId]} />
+      {showResumePrompt && session ? (
+        <RecapCard session={session} onResume={resumePlayback} onStartOver={startFromBeginning} />
+      ) : null}
+    </div>
   );
 }

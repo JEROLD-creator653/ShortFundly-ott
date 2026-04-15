@@ -17,10 +17,15 @@ const config: Config = {
         rise: {
           "0%": { opacity: "0", transform: "translateY(16px)" },
           "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        pop: {
+          "0%": { opacity: "0", transform: "scale(0.95) translateY(-10px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" }
         }
       },
       animation: {
-        rise: "rise 700ms ease-out both"
+        rise: "rise 700ms ease-out both",
+        pop: "pop 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both"
       }
     }
   },
