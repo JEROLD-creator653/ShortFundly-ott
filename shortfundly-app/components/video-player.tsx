@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Hls from "hls.js";
 import { RecapCard } from "@/components/RecapCard";
 import { SubtitleOverlay } from "@/components/SubtitleOverlay";
 import { useContextualResume } from "@/hooks/useContextualResume";
@@ -45,8 +46,64 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   const [subtitleChunks, setSubtitleChunks] = useState<SubtitleChunk[]>([]);
   const [sceneMetadata, setSceneMetadata] = useState<SceneMeta[]>([]);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const episodeId = useMemo(() => "S01E01", []);
   const { session, dismissRecap } = useContextualResume(slug, episodeId);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !source) {
+      setPlaybackError("Playback source is missing for this title.");
+      return;
+    }
+
+    setPlaybackError(null);
+
+    const isHlsSource = /\.m3u8($|\?)/i.test(source);
+    let hls: Hls | null = null;
+
+    const onError = () => {
+      const mediaError = video.error;
+      if (mediaError?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+        setPlaybackError("This video format is not supported in your browser.");
+        return;
+      }
+      setPlaybackError("Could not play this movie right now. Please try another title.");
+    };
+
+    video.addEventListener("error", onError);
+
+    if (isHlsSource) {
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = source;
+      } else if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
+        hls.loadSource(source);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data?.fatal) {
+            setPlaybackError("Stream failed to load for this movie.");
+          }
+        });
+      } else {
+        setPlaybackError("HLS playback is not supported in this browser.");
+      }
+    } else {
+      video.src = source;
+    }
+
+    video.load();
+
+    return () => {
+      video.removeEventListener("error", onError);
+      if (hls) hls.destroy();
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [source]);
 
   useEffect(() => {
     const video = ref.current;
@@ -250,10 +307,14 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
         controls={!showResumePrompt}
         playsInline
         className="aspect-video w-full rounded-2xl border border-zinc-800 bg-black"
-        src={source}
       >
         <track kind="captions" />
       </video>
+      {playbackError ? (
+        <div className="absolute inset-x-4 bottom-4 rounded-xl border border-amber-500/40 bg-black/80 px-4 py-3 text-sm text-amber-200">
+          {playbackError}
+        </div>
+      ) : null}
       <SubtitleOverlay subtitleChunks={subtitleChunks} watchedEpisodes={session?.watchedEpisodes ?? [episodeId]} />
       {showResumePrompt && session ? (
         <RecapCard session={session} onResume={resumePlayback} onStartOver={startFromBeginning} />

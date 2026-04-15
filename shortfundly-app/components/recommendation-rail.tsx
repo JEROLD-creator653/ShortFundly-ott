@@ -73,6 +73,7 @@ export function RecommendationRail({ films, currentContentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [recommendedFilms, setRecommendedFilms] = useState<Film[]>([]);
   const fallback = useMemo(() => films.slice(0, 12), [films]);
+  const recommenderBase = process.env.NEXT_PUBLIC_RECOMMENDER_API_URL?.trim();
 
   useEffect(() => {
     let active = true;
@@ -80,12 +81,18 @@ export function RecommendationRail({ films, currentContentId }: Props) {
     const load = async () => {
       setLoading(true);
       try {
+        if (!recommenderBase) {
+          if (active) {
+            setRecommendedFilms(fallback);
+            setLoading(false);
+          }
+          return;
+        }
+
         const userId = getOrCreateUserId();
         const raw = localStorage.getItem(CONTINUE_KEY);
         const parsed = raw ? (JSON.parse(raw) as ContinueItem[]) : [];
         const watchedIds = parsed.map((item) => item.slug).filter(Boolean);
-
-        const endpointBase = process.env.NEXT_PUBLIC_RECOMMENDER_API_URL || "http://127.0.0.1:8001";
         const query = new URLSearchParams({
           user_id: userId,
           limit: "12"
@@ -98,7 +105,7 @@ export function RecommendationRail({ films, currentContentId }: Props) {
           query.set("watched_ids", watchedIds.join(","));
         }
 
-        const response = await fetch(`${endpointBase}/recommendations?${query.toString()}`, {
+        const response = await fetch(`${recommenderBase}/recommendations?${query.toString()}`, {
           method: "GET",
           cache: "no-store"
         });
@@ -108,9 +115,16 @@ export function RecommendationRail({ films, currentContentId }: Props) {
         }
 
         const payload = (await response.json()) as RecommendationResponse;
+        const seen = new Set<string>();
         const next = payload.items
           .map(toFilm)
           .filter((film) => (film.id ?? film.slug) !== currentContentId)
+          .filter((film) => {
+            const key = `${film.id ?? ""}:${film.slug}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
           .slice(0, 12);
 
         if (active) {
@@ -131,7 +145,7 @@ export function RecommendationRail({ films, currentContentId }: Props) {
     return () => {
       active = false;
     };
-  }, [currentContentId, fallback]);
+  }, [currentContentId, fallback, recommenderBase]);
 
   const rankedFilms = useMemo(() => {
     if (recommendedFilms.length) return recommendedFilms;
@@ -162,8 +176,8 @@ export function RecommendationRail({ films, currentContentId }: Props) {
         </div>
       ) : (
         <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-1">
-          {rankedFilms.map((film) => (
-            <RecommendCard key={film.id ?? film.slug} film={film} />
+          {rankedFilms.map((film, idx) => (
+            <RecommendCard key={`${film.id ?? "no-id"}:${film.slug}:${idx}`} film={film} />
           ))}
         </div>
       )}
