@@ -11,3 +11,7 @@ shortfundly_app/
 
 # Temporary extraction/debug files
 _tmp_dce.js
+
+# Teaser generator environment and temp files
+.env.teaser
+teaser_output/
