@@ -135,7 +135,21 @@ export function ForYouRail({ fallbackFilms }: Props) {
   }, [fallback]);
 
   const display = films.length ? films : fallback;
-  if (!display.length && !loading) return null;
+  const uniqueDisplay = useMemo(() => {
+    const seen = new Set<string>();
+    const unique: Film[] = [];
+
+    for (const film of display) {
+      const identity = film.id || film.slug;
+      if (!identity || seen.has(identity)) continue;
+      seen.add(identity);
+      unique.push(film);
+    }
+
+    return unique;
+  }, [display]);
+
+  if (!uniqueDisplay.length && !loading) return null;
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-7 md:px-8">
@@ -161,7 +175,7 @@ export function ForYouRail({ fallbackFilms }: Props) {
         </div>
       ) : (
         <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-1">
-          {display.map((film) => (
+          {uniqueDisplay.map((film) => (
             <ForYouCard key={film.id ?? film.slug} film={film} />
           ))}
         </div>

@@ -26,6 +26,11 @@ export function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return null;
+  }
+
   const initialQuery = searchParams.get("q") ?? "";
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [searchOpen, setSearchOpen] = useState(Boolean(initialQuery));
@@ -310,11 +315,11 @@ export function Navbar() {
           ) : authState.authenticated && authState.user ? (
             <>
               <Link
-                href={authState.user.role === "admin" ? "/admin" : "/profile"}
+                href="/profile"
                 aria-label="Open account"
                 className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
               >
-                {authState.user.role === "admin" ? "Admin" : planLabel}
+                {planLabel}
               </Link>
               <button
                 aria-label="Sign out"
@@ -328,18 +333,11 @@ export function Navbar() {
           ) : (
             <>
               <Link
-                href="/login?role=user"
+                href="/login"
                 aria-label="User login"
                 className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
               >
-                User Login
-              </Link>
-              <Link
-                href="/login?role=admin"
-                aria-label="Admin login"
-                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
-              >
-                Admin
+                Login
               </Link>
             </>
           )}

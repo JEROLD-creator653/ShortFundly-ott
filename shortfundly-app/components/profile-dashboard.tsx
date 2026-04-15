@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ProfileChatbot } from "./profile-chatbot";
 
 type ProfilePayload = {
   profile: {
@@ -39,7 +40,7 @@ type ProfilePayload = {
 export function ProfileDashboard() {
   const [data, setData] = useState<ProfilePayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -73,6 +74,16 @@ export function ProfileDashboard() {
     load();
   }, []);
 
+  /* Listen for subscription updates from chatbot */
+  useEffect(() => {
+    const handleSubscriptionUpdate = () => {
+      load();
+    };
+
+    window.addEventListener("subscription-updated", handleSubscriptionUpdate);
+    return () => window.removeEventListener("subscription-updated", handleSubscriptionUpdate);
+  }, []);
+
   const watchHours = useMemo(() => {
     if (!data) return 0;
     return Math.round((data.profile.activity.last30DaysWatchMinutes / 60) * 10) / 10;
@@ -80,7 +91,7 @@ export function ProfileDashboard() {
 
   const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaving(true);
+    setSavingProfile(true);
     setMessage(null);
 
     try {
@@ -108,47 +119,50 @@ export function ProfileDashboard() {
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Unable to save profile");
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const updatePlan = async (plan: "free" | "monthly" | "yearly") => {
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/user/subscription", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan })
-      });
-
-      const payload = (await response.json()) as { ok: boolean; message?: string };
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.message || "Unable to change plan");
-      }
-
-      setMessage(`Subscription switched to ${plan}.`);
-      await load();
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Unable to update subscription");
-    } finally {
-      setSaving(false);
+      setSavingProfile(false);
     }
   };
 
   if (loading) {
-    return <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 text-sm text-zinc-300">Loading profile...</div>;
+    return (
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <div className="grid gap-4 md:grid-cols-3 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 rounded-2xl bg-zinc-800/50" />
+            ))}
+          </div>
+          <div className="h-40 rounded-2xl bg-zinc-800/50" />
+          <div className="h-80 rounded-2xl bg-zinc-800/50" />
+        </div>
+        <div className="lg:col-span-1">
+          <div className="sticky top-20 h-[600px] rounded-3xl bg-zinc-800/50" />
+        </div>
+      </div>
+    );
   }
 
   if (!data) {
-    return <div className="rounded-2xl border border-red-900/50 bg-red-950/30 p-6 text-sm text-red-300">{message || "Profile unavailable."}</div>;
+    return (
+      <div className="rounded-2xl border border-red-900/50 bg-red-950/30 p-8">
+        <h3 className="text-lg font-semibold text-red-300">Unable to Load Profile</h3>
+        <p className="mt-2 text-sm text-red-200">{message || "There was an error loading your profile data."}</p>
+        <button
+          onClick={() => load()}
+          className="mt-4 rounded-full bg-red-700 px-4 py-2 text-xs font-semibold uppercase text-white hover:bg-red-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
   }
 
   const profile = data.profile;
 
   return (
-    <div className="space-y-6">
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Left side: Profile details */}
+      <div className="space-y-6 lg:col-span-2">
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Current Plan</p>
@@ -168,26 +182,13 @@ export function ProfileDashboard() {
       </section>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6">
-        <h2 className="text-3xl uppercase [font-family:var(--font-heading)]">AI Subscription Suggestion</h2>
+        <h2 className="text-3xl uppercase [font-family:var(--font-heading)]">AI Subscription Insight</h2>
         <p className="mt-3 text-sm text-zinc-300">{profile.subscription.aiSummary}</p>
         <p className="mt-1 text-xs text-zinc-500">Confidence: {profile.subscription.aiSuggestion.confidence}%</p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {(["free", "monthly", "yearly"] as const).map((plan) => (
-            <button
-              key={plan}
-              disabled={saving}
-              onClick={() => updatePlan(plan)}
-              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition ${
-                profile.subscription.plan === plan
-                  ? "border-primary bg-primary/20 text-primary"
-                  : "border-zinc-700 text-zinc-200 hover:border-primary"
-              }`}
-              type="button"
-            >
-              {plan}
-            </button>
-          ))}
+        <div className="mt-4 rounded-xl border border-zinc-700/50 bg-black/40 px-4 py-3">
+          <p className="text-xs text-zinc-400">
+            💡 <span className="text-zinc-300">To manage your subscription, chat with our AI assistant using the chatbot below.</span>
+          </p>
         </div>
       </section>
 
@@ -211,13 +212,21 @@ export function ProfileDashboard() {
             <input value={genres} onChange={(e) => setGenres(e.target.value)} className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-primary" />
           </label>
           <div className="md:col-span-2">
-            <button disabled={saving} className="rounded-full bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white" type="submit">
-              {saving ? "Saving..." : "Save Profile"}
+            <button disabled={savingProfile} className="rounded-full bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white" type="submit">
+              {savingProfile ? "Saving..." : "Save Profile"}
             </button>
           </div>
         </form>
         {message ? <p className="mt-4 text-sm text-zinc-300">{message}</p> : null}
       </section>
+      </div>
+
+      {/* Right side: Chatbot */}
+      <div className="lg:col-span-1">
+        <div className="sticky top-20 h-[600px]">
+          <ProfileChatbot currentProfile={profile} />
+        </div>
+      </div>
     </div>
   );
 }

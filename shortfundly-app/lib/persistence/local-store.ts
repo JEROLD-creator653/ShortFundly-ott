@@ -174,9 +174,10 @@ async function ensureDemoUsers() {
         renewalAt: dateAfterDays(365)
       }
     }),
+    /* User Demo 1: Free tier, light viewer */
     buildDefaultUser({
       role: "user",
-      name: "Demo Viewer",
+      name: "Alex Johnson",
       email: "user@shortfundly.com",
       password: "user123",
       subscription: {
@@ -184,8 +185,26 @@ async function ensureDemoUsers() {
         status: "active",
         startedAt: now,
         renewalAt: dateAfterDays(30)
+      },
+      activity: {
+        totalWatchMinutes: 120,
+        last30DaysWatchMinutes: 85,
+        weeklyActiveDays: 2,
+        avgSessionMinutes: 25,
+        completionRate: 45,
+        bingeScore: 0.3,
+        likes: 5,
+        searches: 8,
+        supportChats: 0,
+        lastActiveAt: now
+      },
+      details: {
+        phone: "",
+        location: "New York, USA",
+        favoriteGenres: ["Drama", "Thriller"]
       }
     }),
+    /* User Demo 2: Monthly tier, moderate-heavy viewer */
     buildDefaultUser({
       role: "user",
       name: "Cine Fan",
@@ -208,6 +227,161 @@ async function ensureDemoUsers() {
         searches: 24,
         supportChats: 0,
         lastActiveAt: now
+      },
+      details: {
+        phone: "",
+        location: "Los Angeles, USA",
+        favoriteGenres: ["Sci-Fi", "Fantasy", "Action"]
+      }
+    }),
+    /* User Demo 3: Yearly tier, power user */
+    buildDefaultUser({
+      role: "user",
+      name: "Sarah Mitchell",
+      email: "sarah@shortfundly.com",
+      password: "user123",
+      subscription: {
+        plan: "yearly",
+        status: "active",
+        startedAt: dateAfterDays(-150),
+        renewalAt: dateAfterDays(215)
+      },
+      activity: {
+        totalWatchMinutes: 2400,
+        last30DaysWatchMinutes: 620,
+        weeklyActiveDays: 6,
+        avgSessionMinutes: 78,
+        completionRate: 91,
+        bingeScore: 0.95,
+        likes: 52,
+        searches: 87,
+        supportChats: 2,
+        lastActiveAt: now
+      },
+      details: {
+        phone: "",
+        location: "San Francisco, USA",
+        favoriteGenres: ["Documentary", "Drama", "Indie"]
+      }
+    }),
+    /* User Demo 4: Free tier, inactive */
+    buildDefaultUser({
+      role: "user",
+      name: "Mike Torres",
+      email: "mike@shortfundly.com",
+      password: "user123",
+      subscription: {
+        plan: "free",
+        status: "active",
+        startedAt: dateAfterDays(-45),
+        renewalAt: dateAfterDays(30)
+      },
+      activity: {
+        totalWatchMinutes: 240,
+        last30DaysWatchMinutes: 15,
+        weeklyActiveDays: 1,
+        avgSessionMinutes: 12,
+        completionRate: 28,
+        bingeScore: 0.15,
+        likes: 2,
+        searches: 3,
+        supportChats: 0,
+        lastActiveAt: dateAfterDays(-15)
+      },
+      details: {
+        phone: "",
+        location: "Chicago, USA",
+        favoriteGenres: ["Comedy", "Action"]
+      }
+    }),
+    /* User Demo 5: Monthly, considering upgrade */
+    buildDefaultUser({
+      role: "user",
+      name: "Emma Rodriguez",
+      email: "emma@shortfundly.com",
+      password: "user123",
+      subscription: {
+        plan: "monthly",
+        status: "active",
+        startedAt: dateAfterDays(-30),
+        renewalAt: dateAfterDays(30)
+      },
+      activity: {
+        totalWatchMinutes: 480,
+        last30DaysWatchMinutes: 480,
+        weeklyActiveDays: 6,
+        avgSessionMinutes: 65,
+        completionRate: 85,
+        bingeScore: 0.85,
+        likes: 28,
+        searches: 42,
+        supportChats: 1,
+        lastActiveAt: now
+      },
+      details: {
+        phone: "",
+        location: "Austin, Texas",
+        favoriteGenres: ["Romance", "Drama", "Thriller"]
+      }
+    }),
+    /* User Demo 6: Yearly, potential downgrader */
+    buildDefaultUser({
+      role: "user",
+      name: "James Chen",
+      email: "james@shortfundly.com",
+      password: "user123",
+      subscription: {
+        plan: "yearly",
+        status: "active",
+        startedAt: dateAfterDays(-90),
+        renewalAt: dateAfterDays(275)
+      },
+      activity: {
+        totalWatchMinutes: 320,
+        last30DaysWatchMinutes: 35,
+        weeklyActiveDays: 1,
+        avgSessionMinutes: 18,
+        completionRate: 52,
+        bingeScore: 0.25,
+        likes: 4,
+        searches: 6,
+        supportChats: 0,
+        lastActiveAt: dateAfterDays(-10)
+      },
+      details: {
+        phone: "",
+        location: "Seattle, USA",
+        favoriteGenres: ["Sci-Fi"]
+      }
+    }),
+    /* User Demo 7: Free tier, highly engaged */
+    buildDefaultUser({
+      role: "user",
+      name: "Lisa Park",
+      email: "lisa@shortfundly.com",
+      password: "user123",
+      subscription: {
+        plan: "free",
+        status: "active",
+        startedAt: dateAfterDays(-60),
+        renewalAt: dateAfterDays(30)
+      },
+      activity: {
+        totalWatchMinutes: 520,
+        last30DaysWatchMinutes: 340,
+        weeklyActiveDays: 5,
+        avgSessionMinutes: 55,
+        completionRate: 72,
+        bingeScore: 0.75,
+        likes: 21,
+        searches: 35,
+        supportChats: 0,
+        lastActiveAt: now
+      },
+      details: {
+        phone: "",
+        location: "Boston, USA",
+        favoriteGenres: ["Mystery", "Thriller", "Crime"]
       }
     })
   ];
