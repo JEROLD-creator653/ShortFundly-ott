@@ -9,10 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "hls.js": "^1.6.16",
+    "mongoose": "^8.18.0",
     "next": "^16.2.3",
+    "openai": "^4.104.0",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "sharp": "^0.34.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

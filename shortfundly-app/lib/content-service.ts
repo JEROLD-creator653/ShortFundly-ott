@@ -48,9 +48,45 @@ function toSlug(input: string): string {
 function normalizeImage(value: string | undefined): string | undefined {
   if (!value) return undefined;
   if (value === "null") return undefined;
-  if (value.startsWith("//")) return `https:${value}`;
-  if (value.startsWith("/")) return `https://web.shortfundly.com${value}`;
-  return value;
+
+  const candidate = value.startsWith("//")
+    ? `https:${value}`
+    : value.startsWith("/")
+      ? `https://web.shortfundly.com${value}`
+      : value;
+
+  if (process.env.NODE_ENV !== "production" && /^https?:\/\//i.test(candidate)) {
+    const file = candidate.split("?")[0].split("/").pop() || "";
+    const fallbackMap: Record<string, string> = {
+      Rv21Qa0t: "/images/poster-wings.svg",
+      L2CoCY7S: "/images/poster-neon.svg",
+      iJKHNZKc: "/images/poster-platform.svg",
+      tk3YqWEx: "/images/poster-kites.svg",
+      jUqYh9qk: "/images/poster-saffron.svg",
+      c85GdmFf: "/images/poster-kochi.svg"
+    };
+
+    const match = file.match(/([A-Za-z0-9]{8})\.jpg/i)?.[1];
+    return fallbackMap[match || ""] || "/images/poster-wings.svg";
+  }
+
+  try {
+    const url = new URL(candidate);
+    const width = url.searchParams.get("width");
+    const height = url.searchParams.get("height");
+
+    if (width === "undefined" || width === "null" || width === "") {
+      url.searchParams.delete("width");
+    }
+
+    if (height === "undefined" || height === "null" || height === "") {
+      url.searchParams.delete("height");
+    }
+
+    return url.toString();
+  } catch {
+    return candidate.replace(/[?&](width|height)=undefined/gi, "").replace(/[?&](width|height)=null/gi, "");
+  }
 }
 
 function asArray(value: unknown): unknown[] {

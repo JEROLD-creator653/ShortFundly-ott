@@ -49,6 +49,7 @@ export function ContinueWatching({ films }: Props) {
         {items.map((item) => {
           const film = filmBySlug.get(item.slug);
           const imageSrc = film?.thumbnail || "/images/poster-wings.svg";
+          const isSvg = imageSrc.endsWith('.svg');
           return (
             <Link
               key={item.slug}
@@ -56,13 +57,22 @@ export function ContinueWatching({ films }: Props) {
               className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 transition duration-300 hover:-translate-y-1 hover:border-primary"
             >
               <div className="relative aspect-video overflow-hidden">
-                <Image
-                  src={imageSrc}
-                  alt={item.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                />
+                {isSvg ? (
+                  <img
+                    src={imageSrc}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <Image
+                    src={imageSrc}
+                    alt={item.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    unoptimized
+                    className="object-cover transition duration-500 group-hover:scale-105"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
               </div>
               <div className="p-4">

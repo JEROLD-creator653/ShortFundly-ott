@@ -16,6 +16,10 @@ This is a full Next.js (App Router) frontend implementation rebuilt from the rec
 - Mobile-first Tailwind layout
 - Integration-ready API routes: `/api/catalog`, `/api/checkout`, `/api/submit`
 - Push bootstrap hooks for OneSignal and Izooto (env-driven)
+- Gemini-powered customer support widget with chat persistence in MongoDB
+- Admin support chat dashboard at `/admin/support-chats`
+- AI poster generator (styles + title overlay) at `/admin/posters`
+- FFmpeg teaser generation queue at `/admin/teasers`
 
 ## Run locally
 
@@ -34,6 +38,11 @@ Copy `.env.example` to `.env.local` and populate the values you need:
 - `NEXT_PUBLIC_ONESIGNAL_APP_ID` for OneSignal web push
 - `NEXT_PUBLIC_IZOOTO_APP_ID` for iZooto push
 - `NEXT_PUBLIC_GTM_ID` for Google Tag Manager
+- `MONGODB_URI` and `MONGODB_DB_NAME` for chat/poster/teaser persistence
+- `GEMINI_API_KEY` for AI customer support replies
+- `ADMIN_DASHBOARD_TOKEN` for admin support dashboard access control
+- `OPENAI_API_KEY` and `POSTER_IMAGE_MODEL` for poster generation
+- `FFMPEG_BIN` and `TEASER_BACKGROUND_MUSIC_PATH` for teaser rendering
 
 ## Notes
 

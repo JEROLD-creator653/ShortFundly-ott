@@ -14,10 +14,32 @@ type Props = {
 export function HeroBackgroundVideo({ sourceKey, title, thumbnail, videoUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const enableRemoteMedia = process.env.NEXT_PUBLIC_ENABLE_REMOTE_MEDIA === "true";
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+
+    setIsOnline(navigator.onLine);
+
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => {
+      setIsOnline(false);
+      setVideoReady(false);
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoUrl) {
+    if (!video || !videoUrl || !isOnline || !enableRemoteMedia) {
       setVideoReady(false);
       return;
     }
@@ -60,18 +82,28 @@ export function HeroBackgroundVideo({ sourceKey, title, thumbnail, videoUrl }: P
       video.removeAttribute("src");
       video.load();
     };
-  }, [sourceKey, videoUrl]);
+  }, [sourceKey, videoUrl, isOnline, enableRemoteMedia]);
 
   return (
     <>
-      <Image
-        src={thumbnail}
-        alt={title}
-        fill
-        priority
-        sizes="100vw"
-        className={`object-cover object-center transition-opacity duration-700 ${videoReady ? "opacity-0" : "opacity-100"}`}
-      />
+      {thumbnail.endsWith('.svg') ? (
+        <img
+          src={thumbnail}
+          alt={title}
+          className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ${videoReady ? "opacity-0" : "opacity-100"}`}
+        />
+      ) : (
+        <Image
+          src={thumbnail}
+          alt={title}
+          fill
+          priority
+          loading="eager"
+          sizes="100vw"
+          unoptimized
+          className={`object-cover object-center transition-opacity duration-700 ${videoReady ? "opacity-0" : "opacity-100"}`}
+        />
+      )}
       {videoUrl ? (
         <video
           ref={videoRef}

@@ -2,6 +2,9 @@
 shortfundly-app/node_modules/
 shortfundly-app/.next/
 shortfundly-app/.turbo/
+shortfundly-app/.env.local
+shortfundly-app/storage/uploads/
+shortfundly-app/storage/local-db/
 
 # Windows junction alias to same app folder
 shortfundly_app/

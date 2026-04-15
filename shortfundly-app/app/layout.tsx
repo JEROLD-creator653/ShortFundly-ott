@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Manrope } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 import { AnalyticsBootstrap } from "@/components/analytics";
+import { AiSupportWidget } from "@/components/ai-support-widget";
 import { Navbar } from "@/components/navbar";
 import { PushBootstrap } from "@/components/push-bootstrap";
 
@@ -63,6 +65,7 @@ export default function RootLayout({
     <html lang="en" className={`${heading.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#000000" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <meta name="google-site-verification" content="shortfundly-verification" />
         <Script id="datalayer-init" strategy="beforeInteractive">
           {`window.dataLayer = window.dataLayer || []; window.gtag = function(){window.dataLayer.push(arguments);};`}
@@ -81,10 +84,13 @@ export default function RootLayout({
         </a>
         <AnalyticsBootstrap />
         <PushBootstrap />
-        <Navbar />
+        <Suspense fallback={null}>
+          <Navbar />
+        </Suspense>
         <main id="main-content" className="pt-20 md:pt-24">
           {children}
         </main>
+        <AiSupportWidget />
       </body>
     </html>
   );

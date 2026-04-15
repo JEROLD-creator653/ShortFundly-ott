@@ -160,7 +160,11 @@ export function Hero({ features }: Props) {
                       : "border-zinc-600 hover:border-zinc-300"
                   }`}
                 >
-                  <Image src={film.thumbnail} alt={film.title} fill sizes="96px" className="object-cover" />
+                  {film.thumbnail.endsWith('.svg') ? (
+                    <img src={film.thumbnail} alt={film.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <Image src={film.thumbnail} alt={film.title} fill sizes="96px" unoptimized className="object-cover" />
+                  )}
                 </button>
               );
             })}

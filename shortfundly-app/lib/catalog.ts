@@ -9,7 +9,7 @@ export const catalog: Film[] = [
     year: 2025,
     rating: 4.8,
     premium: false,
-    thumbnail: "https://cdn.jwplayer.com/v2/images/Rv21Qa0t.jpg",
+    thumbnail: "/images/poster-wings.svg",
     synopsis: "A village painter rediscovers purpose while restoring a theater lost to monsoon damage.",
     festival: "Kochi Shorts 2025 - Jury Pick",
     videoUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
@@ -22,7 +22,7 @@ export const catalog: Film[] = [
     year: 2024,
     rating: 4.5,
     premium: false,
-    thumbnail: "https://img.jwplayer.com/v1/images/L2CoCY7S.jpg",
+    thumbnail: "/images/poster-neon.svg",
     synopsis: "A broke DJ turns his auto-rickshaw into a midnight radio station.",
     videoUrl: "https://test-streams.mux.dev/test_001/stream.m3u8"
   },
@@ -34,7 +34,7 @@ export const catalog: Film[] = [
     year: 2026,
     rating: 4.9,
     premium: true,
-    thumbnail: "https://cdn.jwplayer.com/v2/images/iJKHNZKc.jpg",
+    thumbnail: "/images/poster-platform.svg",
     synopsis: "A railway announcer hears tomorrow's train accidents before they happen.",
     festival: "IFFI Discovery - Official Selection",
     videoUrl: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8"
@@ -47,7 +47,7 @@ export const catalog: Film[] = [
     year: 2023,
     rating: 4.4,
     premium: false,
-    thumbnail: "https://cdn.jwplayer.com/v2/images/tk3YqWEx.jpg",
+    thumbnail: "/images/poster-kites.svg",
     synopsis: "In a vertical megacity, two siblings race handmade kites between drones.",
     videoUrl: "https://test-streams.mux.dev/bbb-360p/index.m3u8"
   },
@@ -59,7 +59,7 @@ export const catalog: Film[] = [
     year: 2024,
     rating: 4.7,
     premium: true,
-    thumbnail: "https://cdn.jwplayer.com/v2/images/jUqYh9qk.jpg",
+    thumbnail: "/images/poster-saffron.svg",
     synopsis: "Women-led coastal kitchens preserving recipes that outlived colonial ports.",
     festival: "Mumbai Documentary Week - Winner",
     videoUrl: "https://test-streams.mux.dev/dai-discontinuity-deltatre/manifest.m3u8"
@@ -72,7 +72,7 @@ export const catalog: Film[] = [
     year: 2025,
     rating: 4.3,
     premium: false,
-    thumbnail: "https://img.jwplayer.com/v1/images/c85GdmFf.jpg",
+    thumbnail: "/images/poster-kochi.svg",
     synopsis: "Two strangers miss their ferry and find one dawn to rewrite their plans.",
     videoUrl: "https://test-streams.mux.dev/pts_shift/master.m3u8"
   }
