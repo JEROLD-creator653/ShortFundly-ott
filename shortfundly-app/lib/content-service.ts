@@ -125,12 +125,13 @@ function normalizeFilm(item: UnknownRecord): Film | undefined {
   const title = asString(item.title) ?? asString(item.name);
   if (!title) return undefined;
 
+  const id = asString(item._id) ?? asString(item.id);
+
   const slug =
     asString(item.slug) ??
-    asString(item._id) ??
+    id ??
     asString(item.permalink) ??
     asString(item.mediaId) ??
-    asString(item.id) ??
     toSlug(title);
 
   const thumbnail =
@@ -163,6 +164,7 @@ function normalizeFilm(item: UnknownRecord): Film | undefined {
   const stream = asString(item.streamUrl) ?? asString(item.videoUrl) ?? asString(item.video);
 
   return {
+    id,
     slug,
     title,
     genre:
@@ -255,11 +257,11 @@ export async function getCatalog(): Promise<Film[]> {
 }
 
 export async function getFilm(slug: string): Promise<Film | undefined> {
-  const local = catalog.find((film) => film.slug === slug);
+  const local = catalog.find((film) => film.slug === slug || film.id === slug);
 
   try {
     const catalogData = await getCatalog();
-    const matched = catalogData.find((film) => film.slug === slug);
+    const matched = catalogData.find((film) => film.slug === slug || film.id === slug);
     if (matched) return matched;
 
     const bySlug = await fetchJson<{ docs?: unknown; payload?: unknown }>(`${base}/film/slug/${slug}`);

@@ -1,4 +1,5 @@
 export type Film = {
+  id?: string;
   slug: string;
   title: string;
   genre: string;

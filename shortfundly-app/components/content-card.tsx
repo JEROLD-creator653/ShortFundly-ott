@@ -7,9 +7,11 @@ type Props = {
 };
 
 export function ContentCard({ film }: Props) {
+  const watchPath = `/watch/${film.id ?? film.slug}`;
+
   return (
     <Link
-      href={`/watch/${film.slug}`}
+      href={watchPath}
       className="group block overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 transition duration-300 hover:-translate-y-1 hover:border-primary"
     >
       <div className="relative aspect-video overflow-hidden">

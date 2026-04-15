@@ -23,7 +23,7 @@ export default async function WatchPage({ params }: Props) {
     <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 pb-12 md:px-8 lg:grid-cols-3">
       <section className="space-y-4 lg:col-span-2">
         <VideoPlayer slug={film.slug} title={film.title} source={film.videoUrl} />
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
+        <div id="movie-details" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
           <h1 className="text-4xl uppercase leading-none [font-family:var(--font-heading)]">{film.title}</h1>
           <p className="mt-2 text-sm text-zinc-400">
             {film.genre} · {film.duration} · {film.year} · Rating {film.rating}

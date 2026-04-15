@@ -3,7 +3,6 @@ import { Bebas_Neue, Manrope } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { AnalyticsBootstrap } from "@/components/analytics";
-import { InstallBanner } from "@/components/install-banner";
 import { Navbar } from "@/components/navbar";
 import { PushBootstrap } from "@/components/push-bootstrap";
 
@@ -61,7 +60,7 @@ export default function RootLayout({
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-M9HDWD";
 
   return (
-    <html lang="en" className={`${heading.variable} ${body.variable}`}>
+    <html lang="en" className={`${heading.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#000000" />
         <meta name="google-site-verification" content="shortfundly-verification" />
@@ -76,15 +75,14 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-black text-white">
+      <body className="bg-black text-white" suppressHydrationWarning>
         <a href="#main-content" className="skip-link">
           Skip to content
         </a>
         <AnalyticsBootstrap />
         <PushBootstrap />
-        <InstallBanner />
         <Navbar />
-        <main id="main-content" className="pt-28 md:pt-32">
+        <main id="main-content" className="pt-20 md:pt-24">
           {children}
         </main>
       </body>
