@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { SupportChat } from "@/lib/models/support-chat";
 import { getCatalog } from "@/lib/content-service";
-import { getEscalationAnswer, getFaqAnswer } from "@/lib/ai/support";
+import { getEscalationAnswer, getFaqAnswer, getOffTopicResponse } from "@/lib/ai/support";
 import { getGeminiModel } from "@/lib/ai/gemini";
 import {
   addSupportChatMessage,
@@ -81,6 +81,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "sessionId and message are required" }, { status: 400 });
   }
 
+  /* ── Off-topic guard: block unrelated questions immediately ── */
+  const offTopicReply = getOffTopicResponse(message);
+  if (offTopicReply) {
+    const offTopicStream = await streamText(offTopicReply);
+    return new Response(offTopicStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Session-Id": sessionId,
+        "Cache-Control": "no-store"
+      }
+    });
+  }
+
   const useMongo = hasMongoConnection();
   if (useMongo) {
     await connectMongo();
@@ -152,13 +165,18 @@ export async function POST(request: Request) {
               parts: [
                 {
                   text: [
-                    "You are Shortfundly OTT support assistant.",
-                    "Answer with a concise, helpful tone in 2-4 short paragraphs.",
-                    "If issue needs account-specific help or is outside known policy, direct the user to support email.",
-                    `Support email: ${process.env.SUPPORT_ESCALATION_EMAIL || "support@shortfundly.com"}`,
+                    "SYSTEM RULES — follow these strictly:",
+                    "1. You are the Shortfundly OTT platform support assistant. You ONLY answer questions about Shortfundly.",
+                    "2. Allowed topics: subscriptions, payments, premium content, login/account issues, refunds, device compatibility, content catalog, streaming quality, app usage, creator tools, and platform features.",
+                    "3. If the user asks ANYTHING outside these topics (general knowledge, coding, math, jokes, personal questions, politics, recipes, weather, other platforms, etc.), you MUST respond ONLY with: \"I'm the Shortfundly support assistant and I can only help with questions about the Shortfundly OTT platform. Please ask me something related to Shortfundly!\"",
+                    "4. Never generate code, solve math, tell jokes, write stories, or answer trivia.",
+                    "5. Answer with a concise, helpful, professional tone in 2-4 short sentences.",
+                    "6. If the issue needs account-specific help, direct the user to support email.",
+                    `7. Support email: ${process.env.SUPPORT_ESCALATION_EMAIL || "support@shortfundly.com"}`,
+                    "",
                     faq
                       ? `Approved FAQ source (use this as authoritative): ${faq.answer}`
-                      : "No predefined FAQ source matched this question. Provide best-effort guidance and include escalation path.",
+                      : "No predefined FAQ matched. Provide best-effort Shortfundly guidance and include escalation path if unsure.",
                     `User question: ${message}`
                   ].join("\n")
                 }

@@ -9,6 +9,7 @@ export type Film = {
   premium: boolean;
   thumbnail: string;
   synopsis: string;
+  language?: string;
   festival?: string;
   videoUrl: string;
 };

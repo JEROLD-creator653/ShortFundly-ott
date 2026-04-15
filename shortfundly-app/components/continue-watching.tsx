@@ -54,7 +54,7 @@ export function ContinueWatching({ films }: Props) {
             <Link
               key={item.slug}
               href={`/watch/${item.slug}`}
-              className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 transition duration-300 hover:-translate-y-1 hover:border-primary"
+              className="group overflow-hidden rounded-2xl border border-zinc-800/70 bg-zinc-950/70 opacity-85 scale-[0.97] transition-all duration-400 ease-out hover:opacity-100 hover:scale-100 hover:-translate-y-1.5 hover:border-primary/70 hover:shadow-[0_8px_30px_rgba(251,90,50,0.15)]"
             >
               <div className="relative aspect-video overflow-hidden">
                 {isSvg ? (

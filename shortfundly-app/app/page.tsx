@@ -1,5 +1,6 @@
 import { ContinueWatching } from "@/components/continue-watching";
 import { ContentRail } from "@/components/content-rail";
+import { ForYouRail } from "@/components/for-you-rail";
 import { Hero } from "@/components/hero";
 import { getCatalog } from "@/lib/content-service";
 
@@ -21,6 +22,7 @@ export default async function HomePage() {
     <>
       <Hero features={heroMovies} />
       <ContinueWatching films={catalog} />
+      <ForYouRail fallbackFilms={topRated} />
       <ContentRail title="Top Rated" films={topRated} />
       <ContentRail title="Latest Releases" films={latest} />
       <ContentRail title="Award-Winning Shorts" films={catalog.filter((film) => film.festival)} />

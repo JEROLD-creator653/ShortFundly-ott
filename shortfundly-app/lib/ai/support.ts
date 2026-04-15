@@ -13,12 +13,74 @@ export type FaqAnswer = {
 
 const escalationEmail = process.env.SUPPORT_ESCALATION_EMAIL || "support@shortfundly.com";
 
+/* ─── Shortfundly-relevant keyword allowlist ─── */
+const PLATFORM_KEYWORDS =
+  /\b(shortfundly|plan|subscription|premium|payment|pay|upi|card|login|signin|sign in|otp|password|refund|cancel|device|browser|tv|android|ios|iphone|watch|stream|movie|film|short\s?film|video|content|catalog|explore|account|profile|settings|download|offline|buffering|quality|resolution|hd|subtitle|language|genre|app|website|upload|creator|filmmaker|rating|review|notification|support|help|contact|email|ticket)\b/i;
+
+/* ─── Off-topic detection patterns ─── */
+const OFF_TOPIC_PATTERNS = [
+  // General knowledge / trivia
+  /\b(who is|who was|what is the capital|tell me about|explain|define|history of|biography)\b/i,
+  // Coding / technical
+  /\b(write code|python|javascript|java |c\+\+|html|css|react|algorithm|function|api|programming|debug|compile)\b/i,
+  // Math / science
+  /\b(solve|calculate|equation|formula|integral|derivative|physics|chemistry|biology|math)\b/i,
+  // Politics / news / opinion
+  /\b(president|prime minister|election|politics|war|government|democrat|republican|vote)\b/i,
+  // Entertainment outside platform
+  /\b(play a game|tell me a joke|joke|story|poem|sing|song|lyrics|recipe|cook|weather|forecast)\b/i,
+  // Personal / social
+  /\b(are you human|who are you|what are you|your name|how old|where do you live|friend|date|love)\b/i,
+  // Explicit off-topic greetings with nothing else
+  /^(hi|hello|hey|yo|sup|hii+|hola|namaste|good morning|good evening|good afternoon|howdy|greetings)\s*[!?.]*$/i
+];
+
+const OFF_TOPIC_RESPONSE =
+  "I'm the Shortfundly support assistant and I can only help with questions about the Shortfundly OTT platform — subscriptions, payments, content, login issues, devices, and more. Please ask me something related to Shortfundly and I'll be happy to help!";
+
+const GREETING_RESPONSE =
+  "Hello! 👋 I'm your Shortfundly support assistant. I can help you with subscriptions, payments, premium content, login issues, refunds, and device compatibility. What would you like to know?";
+
+/**
+ * Checks if a question is off-topic (not related to Shortfundly OTT).
+ * Returns an appropriate response string, or null if the question is on-topic.
+ */
+export function getOffTopicResponse(question: string): string | null {
+  const trimmed = question.trim();
+  if (!trimmed) return null;
+
+  // Pure greeting — respond warmly but steer towards platform topics
+  if (/^(hi|hello|hey|yo|sup|hii+|hola|namaste|good morning|good evening|good afternoon|howdy|greetings)\s*[!?.]*$/i.test(trimmed)) {
+    return GREETING_RESPONSE;
+  }
+
+  // If the message contains Shortfundly-relevant keywords, it's on-topic
+  if (PLATFORM_KEYWORDS.test(trimmed)) {
+    return null;
+  }
+
+  // Check against off-topic patterns
+  for (const pattern of OFF_TOPIC_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return OFF_TOPIC_RESPONSE;
+    }
+  }
+
+  // Short vague messages (< 4 words) with no platform keywords → treat as off-topic
+  const wordCount = trimmed.split(/\s+/).length;
+  if (wordCount <= 3 && !PLATFORM_KEYWORDS.test(trimmed)) {
+    return OFF_TOPIC_RESPONSE;
+  }
+
+  return null;
+}
+
 const FAQ_PATTERNS: Array<{ topic: FaqTopic; regex: RegExp; answer: string }> = [
   {
     topic: "subscription",
     regex: /(best plan|which plan suits me|which plan is best|recommend.*plan|what plan should i choose|best subscription|which subscription is best)/i,
     answer:
-      "If you watch only sometimes, Free is enough. If you watch regularly and want fewer ads, Monthly Premium is the best starting point. If you use Shortfundly often, Yearly Premium gives the best value overall. Tell me how often you watch and I’ll recommend one for you."
+      "If you watch only sometimes, Free is enough. If you watch regularly and want fewer ads, Monthly Premium is the best starting point. If you use Shortfundly often, Yearly Premium gives the best value overall. Tell me how often you watch and I'll recommend one for you."
   },
   {
     topic: "subscription",

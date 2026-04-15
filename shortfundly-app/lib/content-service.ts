@@ -55,6 +55,7 @@ function normalizeImage(value: string | undefined): string | undefined {
       ? `https://web.shortfundly.com${value}`
       : value;
 
+
   try {
     const url = new URL(candidate);
     const width = url.searchParams.get("width");
@@ -142,6 +143,24 @@ function parseRating(item: UnknownRecord): number {
   return 4.5;
 }
 
+function parseLanguage(item: UnknownRecord): string | undefined {
+  const knownLanguages = ["Hindi", "English", "Tamil", "Telugu", "Malayalam", "Kannada", "Marathi", "Bengali", "Gujarati", "Punjabi"];
+  const haystack = [
+    asString(item.tags),
+    asString(item.title) ?? asString(item.name),
+    asString(item.description) ?? asString(item.synopsis)
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  for (const lang of knownLanguages) {
+    if (haystack.includes(lang.toLowerCase())) {
+      return lang;
+    }
+  }
+  return undefined;
+}
+
 function normalizeFilm(item: UnknownRecord): Film | undefined {
   const title = asString(item.title) ?? asString(item.name);
   if (!title) return undefined;
@@ -199,6 +218,7 @@ function normalizeFilm(item: UnknownRecord): Film | undefined {
     premium,
     thumbnail,
     synopsis: asString(item.synopsis) ?? asString(item.description) ?? asString(item.certify) ?? "",
+    language: asString(item.language) ?? asString((item.language as UnknownRecord)?.name) ?? parseLanguage(item) ?? "Hindi",
     festival: asString(item.festival),
     videoUrl:
       source ??
@@ -237,6 +257,85 @@ function dedupeBySlug(items: Film[]): Film[] {
     }
   }
   return [...map.values()];
+}
+
+function tokenizeFilm(film: Film): string[] {
+  const source = [
+    film.title,
+    film.genre,
+    film.language ?? "",
+    film.festival ?? "",
+    film.synopsis
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return source
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2);
+}
+
+function buildTfidfVectors(films: Film[]): Map<string, Map<string, number>> {
+  const docs = films.map((film) => ({
+    key: film.id ?? film.slug,
+    tokens: tokenizeFilm(film)
+  }));
+
+  const docFreq = new Map<string, number>();
+  for (const doc of docs) {
+    const uniq = new Set(doc.tokens);
+    for (const token of uniq) {
+      docFreq.set(token, (docFreq.get(token) ?? 0) + 1);
+    }
+  }
+
+  const totalDocs = Math.max(1, docs.length);
+  const vectors = new Map<string, Map<string, number>>();
+
+  for (const doc of docs) {
+    const tf = new Map<string, number>();
+    for (const token of doc.tokens) {
+      tf.set(token, (tf.get(token) ?? 0) + 1);
+    }
+
+    const vector = new Map<string, number>();
+    const tokenCount = Math.max(1, doc.tokens.length);
+    for (const [token, count] of tf.entries()) {
+      const normalizedTf = count / tokenCount;
+      const idf = Math.log((totalDocs + 1) / ((docFreq.get(token) ?? 0) + 1)) + 1;
+      vector.set(token, normalizedTf * idf);
+    }
+
+    vectors.set(doc.key, vector);
+  }
+
+  return vectors;
+}
+
+function cosineSimilarity(a: Map<string, number> | undefined, b: Map<string, number> | undefined): number {
+  if (!a || !b || !a.size || !b.size) return 0;
+
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (const value of a.values()) normA += value * value;
+  for (const value of b.values()) normB += value * value;
+
+  const [small, large] = a.size < b.size ? [a, b] : [b, a];
+  for (const [token, value] of small.entries()) {
+    dot += value * (large.get(token) ?? 0);
+  }
+
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom > 0 ? dot / denom : 0;
+}
+
+function normalize(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (max <= min) return 1;
+  return Math.min(1, Math.max(0, (value - min) / (max - min)));
 }
 
 async function fetchAllMovies(): Promise<Film[]> {
@@ -291,4 +390,55 @@ export async function getFilm(slug: string): Promise<Film | undefined> {
   } catch {
     return local;
   }
+}
+
+export async function getRelatedFilms(film: Film, limit = 12): Promise<Film[]> {
+  const all = await getCatalog();
+  const currentKey = film.id ?? film.slug;
+  const candidates = all.filter((f) => (f.id ?? f.slug) !== currentKey);
+  if (!candidates.length) return [];
+
+  // Hybrid ranking inspired by the attached notebooks:
+  // 1) Content score via TF-IDF cosine similarity.
+  // 2) Collaborative proxy via audience/popularity signals.
+  const vectors = buildTfidfVectors(all);
+  const currentVector = vectors.get(currentKey);
+
+  const ratings = candidates.map((item) => item.rating);
+  const years = candidates.map((item) => item.year);
+  const minRating = Math.min(...ratings);
+  const maxRating = Math.max(...ratings);
+  const minYear = Math.min(...years);
+  const maxYear = Math.max(...years);
+
+  const scored = candidates
+    .map((candidate) => {
+      const candidateKey = candidate.id ?? candidate.slug;
+      const contentScore = cosineSimilarity(currentVector, vectors.get(candidateKey));
+
+      const ratingScore = normalize(candidate.rating, minRating, maxRating);
+      const recencyScore = normalize(candidate.year, minYear, maxYear);
+      const languageBoost =
+        film.language && candidate.language && film.language.toLowerCase() === candidate.language.toLowerCase() ? 1 : 0;
+      const genreBoost = candidate.genre.toLowerCase() === film.genre.toLowerCase() ? 1 : 0;
+
+      // Approximate collaborative affinity from what broad audience tends to prefer.
+      const collaborativeScore =
+        ratingScore * 0.55 +
+        recencyScore * 0.15 +
+        languageBoost * 0.15 +
+        genreBoost * 0.15;
+
+      const hybridScore = contentScore * 0.7 + collaborativeScore * 0.3;
+
+      return {
+        film: candidate,
+        score: hybridScore,
+        contentScore,
+        collaborativeScore
+      };
+    })
+    .sort((a, b) => b.score - a.score || b.contentScore - a.contentScore || b.collaborativeScore - a.collaborativeScore);
+
+  return scored.slice(0, limit).map((item) => item.film);
 }
