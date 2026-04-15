@@ -26,6 +26,7 @@ type ProfilePayload = {
     };
     subscription: {
       plan: "free" | "monthly" | "yearly";
+      displayPlan?: string;
       status: string;
       renewalAt: string;
       aiSummary: string;
@@ -174,7 +175,7 @@ export function ProfileDashboard() {
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Current Plan</p>
-          <p className="mt-2 text-3xl uppercase [font-family:var(--font-heading)]">{profile.subscription.plan}</p>
+          <p className="mt-2 text-3xl uppercase [font-family:var(--font-heading)]">{profile.subscription.displayPlan || profile.subscription.plan}</p>
           <p className="mt-2 text-xs text-zinc-400">Renews on {new Date(profile.subscription.renewalAt).toLocaleDateString()}</p>
         </article>
         <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">

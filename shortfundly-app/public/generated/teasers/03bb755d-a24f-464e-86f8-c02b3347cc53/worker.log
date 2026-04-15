@@ -1,0 +1,66 @@
+2026-04-15 23:25:28,798 [INFO] teaser_generator: === Starting teaser generation for 'API Smoke' ===
+2026-04-15 23:25:28,798 [INFO] teaser_generator: Generating script for 'API Smoke' (Thriller, 30s)
+2026-04-15 23:25:28,798 [INFO] teaser_generator: Attempting script generation via OpenRouter
+2026-04-15 23:25:34,301 [INFO] teaser_generator: Script generated via OpenRouter: 5 lines, 5 shots
+2026-04-15 23:25:34,305 [INFO] teaser_generator: Generating voice-over for 5 lines (language: Tamil)
+2026-04-15 23:25:36,336 [INFO] teaser_generator: Voice-over saved via local Windows TTS: teaser_output\voiceover_20260415_232534.mp3
+2026-04-15 23:25:36,336 [INFO] teaser_generator: Generating 5 cinematic shots
+2026-04-15 23:25:36,336 [INFO] teaser_generator: Shot 1/5: Extreme close-up of a single, blood-red drop of liquid hitting a dark, reflectiv...
+2026-04-15 23:25:36,927 [ERROR] teaser_generator: Failed to generate shot 0: 404 Client Error: NOT FOUND for url: https://api.segmind.com/v1/segmind/text-to-video-ms-1b
+2026-04-15 23:25:36,927 [INFO] teaser_generator: Shot 2/5: A dimly lit server room. Flashing red error lights. A hand nervously reaches for...
+2026-04-15 23:25:37,598 [ERROR] teaser_generator: Failed to generate shot 1: 404 Client Error: NOT FOUND for url: https://api.segmind.com/v1/segmind/text-to-video-ms-1b
+2026-04-15 23:25:37,598 [INFO] teaser_generator: Shot 3/5: Quick cuts: a blurred face in a crowd, a shadowy figure in an alleyway, a flicke...
+2026-04-15 23:25:38,518 [ERROR] teaser_generator: Failed to generate shot 2: 404 Client Error: NOT FOUND for url: https://api.segmind.com/v1/segmind/text-to-video-ms-1b
+2026-04-15 23:25:38,518 [INFO] teaser_generator: Shot 4/5: A digital smoke effect, swirling and obscuring a menacing silhouette. Mysterious...
+2026-04-15 23:25:40,426 [ERROR] teaser_generator: Failed to generate shot 3: 404 Client Error: NOT FOUND for url: https://api.segmind.com/v1/segmind/text-to-video-ms-1b
+2026-04-15 23:25:40,427 [INFO] teaser_generator: Shot 5/5: The title 'API Smoke' materializes from digital glitching effects on a black scr...
+2026-04-15 23:25:41,430 [ERROR] teaser_generator: Failed to generate shot 4: 404 Client Error: NOT FOUND for url: https://api.segmind.com/v1/segmind/text-to-video-ms-1b
+2026-04-15 23:25:41,430 [WARNING] teaser_generator: No shots generated successfully. Continuing with original clips only.
+2026-04-15 23:25:41,432 [INFO] teaser_generator: Trimming clips (target segments: ~6s each)
+2026-04-15 23:25:41,791 [INFO] teaser_generator: Trimmed clip 0: teaser_output\temp\trimmed_clips\clip_00_trim.mp4
+2026-04-15 23:25:41,791 [INFO] teaser_generator: Assembling teaser (30s)
+2026-04-15 23:25:41,792 [INFO] teaser_generator: Concatenating 1 video segments
+2026-04-15 23:25:41,792 [INFO] teaser_generator: Running: ffmpeg -f concat -safe 0 -i teaser_output\temp\concat_list.txt -vf scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,eq=brightness=0.05:contrast=1.1:saturation=1.2,hqdn3d=luma_spatial=0.8:chroma_spatial=0.8 -c:v libx264 -preset slow -crf 20 -c:a aac -b:a 192k -y teaser_output\temp\concat_video.mp4
+2026-04-15 23:25:43,446 [INFO] teaser_generator: Running final encode: ffmpeg -i teaser_output\temp\concat_video.mp4 -i teaser_output\voiceover_20260415_232534.mp3 -filter_complex [1:a]volume=1.0[a] -map 0:v -map [a] -t 30 -c:v libx264 -preset fast -crf 21 -c:a aac -b:a 192k -movflags +faststart -y C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\shortfundly-app\public\generated\teasers\03bb755d-a24f-464e-86f8-c02b3347cc53\final_teaser.mp4
+2026-04-15 23:25:44,459 [INFO] teaser_generator: Teaser assembled successfully: C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\shortfundly-app\public\generated\teasers\03bb755d-a24f-464e-86f8-c02b3347cc53\final_teaser.mp4
+2026-04-15 23:25:44,459 [INFO] teaser_generator: === Teaser generation complete: C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\shortfundly-app\public\generated\teasers\03bb755d-a24f-464e-86f8-c02b3347cc53\final_teaser.mp4 ===
+Traceback (most recent call last):
+  File "C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\generate_teaser_cli.py", line 302, in main
+    print("\u2713 TEASER GENERATION COMPLETE")
+  File "C:\Users\jerol\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\generate_teaser_cli.py", line 369, in <module>
+    main()
+  File "C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\generate_teaser_cli.py", line 329, in main
+    print(f"\n\u2717 Generation failed: {e}")
+  File "C:\Users\jerol\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 2: character maps to <undefined>
+
+
+--- STDOUT ---
+
+
+================================================================================
+AI TEASER GENERATOR
+================================================================================
+Title:        API Smoke
+Genre:        Thriller
+Language:     Tamil
+Duration:     30s
+Mood:         thriller
+Voice Style:  suspense
+Clips:        1 file(s)
+Music:        No
+Output:       C:\Users\jerol\SEC\projects\shortfundly\shortfundly-OTT\shortfundly-app\public\generated\teasers\03bb755d-a24f-464e-86f8-c02b3347cc53\final_teaser.mp4
+================================================================================
+
+
+================================================================================

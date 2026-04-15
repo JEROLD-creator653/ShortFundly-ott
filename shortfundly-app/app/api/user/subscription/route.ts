@@ -20,7 +20,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "A valid plan is required" }, { status: 400 });
   }
 
-  const updated = await updateDemoUserSubscription(session.userId, plan);
+  const displayPlan = plan === "yearly" ? "Premium Annual" : plan === "monthly" ? "Pro Monthly" : "Free";
+  const renewalDays = plan === "yearly" ? 365 : 30;
+
+  const updated = await updateDemoUserSubscription(session.userId, plan, {
+    displayPlan,
+    renewalDays,
+    purchasedPlanId: plan === "free" ? undefined : `manual_${plan}`
+  });
   if (!updated) {
     return NextResponse.json({ ok: false, message: "Subscription update failed" }, { status: 400 });
   }

@@ -1,13 +1,14 @@
 import fs from "node:fs/promises";
-import { spawn } from "node:child_process";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { TeaserRender } from "@/lib/models/teaser-render";
+import { generateTeaserScript, generateVoiceoverAudio } from "@/lib/teaser-generator/ai";
+import { buildShotstackEdit } from "@/lib/teaser-generator/timeline";
+import { createShotstackRender, getShotstackRender } from "@/lib/teaser-generator/shotstack";
 import type { TeaserCreateInput, TeaserAssetBundle } from "@/lib/teaser-generator/types";
-import { getShotstackRender } from "@/lib/teaser-generator/shotstack";
-import { createTeaserRender, hasMongoConnection, listTeaserRenders, updateTeaserRender } from "@/lib/persistence/local-store";
+import { createTeaserJob, hasMongoConnection, listTeaserJobs, updateTeaserJob } from "@/lib/persistence/local-store";
 
 export const runtime = "nodejs";
 
@@ -48,173 +49,6 @@ function absolutePathToPublicPath(absolutePath: string) {
   return `/${withoutPublicPrefix}`;
 }
 
-function resolveTeaserEnvFile() {
-  return process.env.TEASER_ENV_FILE?.trim() || path.resolve(process.cwd(), "..", ".env.teaser");
-}
-
-function resolveTeaserPythonBinary() {
-  return process.env.TEASER_PYTHON_BIN?.trim() || path.resolve(process.cwd(), "..", ".venv", "Scripts", "python.exe");
-}
-
-function resolveTeaserCliScript() {
-  return path.resolve(process.cwd(), "..", "generate_teaser_cli.py");
-}
-
-function compactLogTail(text: string, maxChars = 1400) {
-  const normalized = text.replace(/\r/g, "").trim();
-  if (!normalized) return "";
-
-  const tailWindow = normalized.slice(-maxChars * 4);
-  const tailLines = tailWindow
-    .split("\n")
-    .filter((line) => line.trim().length > 0)
-    .slice(-18)
-    .join(" ");
-
-  const compact = tailLines.replace(/\s+/g, " ").trim();
-  if (compact.length <= maxChars) return compact;
-  return compact.slice(-maxChars);
-}
-
-async function persistTeaserUpdate(
-  jobId: string,
-  updates: Partial<Pick<Awaited<ReturnType<typeof createTeaserRender>>, "status" | "outputUrl" | "errorMessage" | "script">>
-) {
-  if (hasMongoConnection()) {
-    await connectMongo();
-    await TeaserRender.findByIdAndUpdate(jobId, updates);
-    return TeaserRender.findById(jobId).lean();
-  }
-
-  return updateTeaserRender(jobId, updates);
-}
-
-async function runGodLevelTeaserGeneration(input: {
-  jobId: string;
-  title: string;
-  genre: string;
-  language: string;
-  duration: number;
-  mood: string;
-  voiceStyle: string;
-  clips: Array<{ localPath: string }>;
-  music?: { localPath: string };
-  poster?: { url: string };
-}) {
-  const outputDir = path.join(process.cwd(), "public", "generated", "teasers", input.jobId);
-  const outputPath = path.join(outputDir, "final_teaser.mp4");
-  const metadataPath = path.join(outputDir, "metadata.json");
-  const pythonBinary = resolveTeaserPythonBinary();
-  const cliScript = resolveTeaserCliScript();
-  const envFile = resolveTeaserEnvFile();
-
-  await fs.mkdir(outputDir, { recursive: true });
-  await persistTeaserUpdate(input.jobId, { status: "rendering", errorMessage: undefined });
-
-  const args = [
-    cliScript,
-    "--title",
-    input.title,
-    "--genre",
-    input.genre,
-    "--language",
-    input.language,
-    "--duration",
-    String(input.duration),
-    "--mood",
-    input.mood,
-    "--voice-style",
-    input.voiceStyle,
-    "--clips",
-    ...input.clips.map((clip) => clip.localPath),
-    "--output",
-    outputPath
-  ];
-
-  if (input.music?.localPath) {
-    args.push("--music", input.music.localPath);
-  }
-
-  if (input.poster?.url) {
-    args.push("--poster", input.poster.url);
-  }
-
-  const stdout: string[] = [];
-  const stderr: string[] = [];
-  const workerLogPath = path.join(outputDir, "worker.log");
-
-  await new Promise<void>((resolve) => {
-    const child = spawn(pythonBinary, args, {
-      cwd: path.resolve(process.cwd(), ".."),
-      env: {
-        ...process.env,
-        TEASER_ENV_FILE: envFile,
-        PYTHONUNBUFFERED: "1",
-        PYTHONIOENCODING: "utf-8"
-      },
-      windowsHide: true
-    });
-
-    child.stdout.on("data", (chunk) => stdout.push(String(chunk)));
-    child.stderr.on("data", (chunk) => stderr.push(String(chunk)));
-
-    child.on("error", async (error) => {
-      await persistTeaserUpdate(input.jobId, {
-        status: "failed",
-        errorMessage: `Teaser worker failed to start: ${error.message}`
-      });
-      resolve();
-    });
-
-    child.on("close", async (code) => {
-      const stdoutText = stdout.join("");
-      const stderrText = stderr.join("");
-      const mergedLogs = [stderrText, stdoutText].filter(Boolean).join("\n\n--- STDOUT ---\n\n");
-
-      try {
-        await fs.writeFile(workerLogPath, mergedLogs || `Worker exited with code ${code ?? "unknown"}`, "utf8");
-      } catch {
-        // Best-effort log persistence only.
-      }
-
-      if (code !== 0) {
-        const snippet =
-          compactLogTail(stderrText) || compactLogTail(stdoutText) || compactLogTail(mergedLogs) || `Worker exited with code ${code}`;
-        await persistTeaserUpdate(input.jobId, {
-          status: "failed",
-          errorMessage: snippet
-            ? `Teaser generation failed: ${snippet} (full log: ${absolutePathToPublicPath(workerLogPath)})`
-            : `Teaser generation failed with exit code ${code}`
-        });
-        resolve();
-        return;
-      }
-
-      try {
-        const rawMetadata = await fs.readFile(metadataPath, "utf8");
-        const metadata = JSON.parse(rawMetadata) as { script?: { narration?: string } };
-        const scriptText = metadata.script?.narration || `${input.title} teaser generated successfully.`;
-
-        await persistTeaserUpdate(input.jobId, {
-          status: "completed",
-          outputUrl: absolutePathToPublicPath(outputPath),
-          script: scriptText,
-          errorMessage: undefined
-        });
-      } catch (error) {
-        await persistTeaserUpdate(input.jobId, {
-          status: "completed",
-          outputUrl: absolutePathToPublicPath(outputPath),
-          script: `${input.title} teaser generated successfully.`,
-          errorMessage: error instanceof Error ? error.message : undefined
-        });
-      }
-
-      resolve();
-    });
-  });
-}
-
 async function saveUploadFile(input: { file: File; targetDir: string; prefix: string }) {
   await fs.mkdir(input.targetDir, { recursive: true });
   const ext = path.extname(input.file.name || "") || ".bin";
@@ -252,7 +86,7 @@ async function syncRecordStatus(record: {
         ...(remote.url ? { outputUrl: remote.url } : {})
       });
     } else {
-      await updateTeaserRender(record._id, {
+      await updateTeaserJob(record._id, {
         status: nextStatus,
         ...(nextStatus === "failed" && remote.error ? { errorMessage: remote.error } : {}),
         ...(remote.url ? { outputUrl: remote.url } : {})
@@ -271,7 +105,7 @@ export async function GET() {
         await connectMongo();
         return TeaserRender.find({}).sort({ createdAt: -1 }).limit(120).lean();
       })()
-    : await listTeaserRenders();
+    : await listTeaserJobs();
 
   await Promise.all(
     jobs
@@ -284,7 +118,7 @@ export async function GET() {
         await connectMongo();
         return TeaserRender.find({}).sort({ createdAt: -1 }).limit(120).lean();
       })()
-    : await listTeaserRenders();
+    : await listTeaserJobs();
 
   return NextResponse.json({ ok: true, jobs: refreshed });
 }
@@ -326,12 +160,9 @@ export async function POST(request: Request) {
       includeSubtitles
     };
 
-    if (!clipFiles.length) {
-      return NextResponse.json({ ok: false, message: "At least one clip is required" }, { status: 400 });
-    }
+    const script = await generateTeaserScript(input);
 
-    const jobId = randomUUID();
-    const rootAssetDir = path.join(process.cwd(), "public", "uploads", "teasers", jobId);
+    const rootAssetDir = path.join(process.cwd(), "public", "uploads", "teasers", randomUUID());
     const imageDir = path.join(rootAssetDir, "images");
     const clipDir = path.join(rootAssetDir, "clips");
     const audioDir = path.join(rootAssetDir, "audio");
@@ -357,6 +188,61 @@ export async function POST(request: Request) {
       assets.music = await saveUploadFile({ file: music, targetDir: audioDir, prefix: "music" });
     }
 
+    const voiceoverPath = path.join(audioDir, `voiceover-${randomUUID()}.mp3`);
+    const voiceOk = await generateVoiceoverAudio({
+      narration: script.narration,
+      voiceStyle,
+      outputPath: voiceoverPath
+    });
+
+    if (voiceOk) {
+      const publicPath = absolutePathToPublicPath(voiceoverPath);
+      assets.voiceover = {
+        localPath: voiceoverPath,
+        publicPath,
+        url: toPublicAssetUrl(publicPath)
+      };
+    }
+
+    const hasShotstack = Boolean(process.env.SHOTSTACK_API_KEY?.trim());
+    const canUseShotstack = hasShotstack && hasReachablePublicAssetBaseUrl();
+    let renderId: string | undefined;
+    let status: "queued" | "rendering" | "completed" | "failed" = "queued";
+    let outputUrl: string | undefined;
+    let errorMessage: string | undefined;
+
+    if (canUseShotstack) {
+      const edit = buildShotstackEdit({
+        assets,
+        script,
+        config: input
+      });
+
+      const hasAbsoluteAssets = [
+        ...(assets.poster ? [assets.poster.url] : []),
+        ...assets.images.map((item) => item.url),
+        ...assets.clips.map((item) => item.url),
+        ...(assets.music ? [assets.music.url] : []),
+        ...(assets.voiceover ? [assets.voiceover.url] : [])
+      ].every((url) => /^https?:\/\//i.test(url));
+
+      if (!hasAbsoluteAssets) {
+        throw new Error("Shotstack requires publicly accessible asset URLs. Set PUBLIC_ASSET_BASE_URL.");
+      }
+
+      const created = await createShotstackRender(edit);
+      renderId = created.renderId;
+      status = normalizeStatus(created.status) as "queued" | "rendering" | "completed" | "failed";
+    } else {
+      outputUrl = assets.clips[0]?.publicPath || assets.images[0]?.publicPath || assets.poster?.publicPath;
+      status = outputUrl ? "completed" : "failed";
+      if (!outputUrl) {
+        errorMessage = "No visual assets were uploaded to build teaser preview";
+      } else if (hasShotstack && !canUseShotstack) {
+        errorMessage = "Shotstack skipped because PUBLIC_ASSET_BASE_URL is missing or not publicly reachable. Using local preview output.";
+      }
+    }
+
     const recordPayload = {
       title,
       genre,
@@ -365,10 +251,11 @@ export async function POST(request: Request) {
       mood,
       voiceStyle,
       includeSubtitles,
-      script: "Teaser generation queued.",
-      outputUrl: undefined,
-      status: "queued" as const,
-      errorMessage: undefined
+      script: script.narration,
+      shotstackRenderId: renderId,
+      outputUrl,
+      status,
+      errorMessage
     };
 
     const job = hasMongoConnection()
@@ -376,27 +263,18 @@ export async function POST(request: Request) {
           await connectMongo();
           return TeaserRender.create(recordPayload);
         })()
-      : await createTeaserRender(recordPayload);
+      : await createTeaserJob(recordPayload);
 
-    void runGodLevelTeaserGeneration({
-      jobId: String(job._id),
-      title,
-      genre,
-      language,
-      duration,
-      mood,
-      voiceStyle,
-      clips: assets.clips,
-      music: assets.music,
-      poster: assets.poster
-    });
+    if (job.shotstackRenderId) {
+      await syncRecordStatus({ _id: String(job._id), status: String(job.status), shotstackRenderId: job.shotstackRenderId });
+    }
 
     const latest = hasMongoConnection()
       ? await (async () => {
           await connectMongo();
           return TeaserRender.findById(job._id).lean();
         })()
-      : await listTeaserRenders(1).then((items) => items.find((item) => item._id === String(job._id)) || job);
+      : await listTeaserJobs(1).then((items) => items.find((item) => item._id === String(job._id)) || job);
 
     return NextResponse.json({ ok: true, teaser: latest || job });
   } catch (error) {

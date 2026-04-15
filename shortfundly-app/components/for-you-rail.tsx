@@ -101,13 +101,15 @@ export function ForYouRail({ fallbackFilms }: Props) {
         if (contentSeed) query.set("content_id", contentSeed);
         if (watchedIds.length) query.set("watched_ids", watchedIds.join(","));
 
+        const signal = AbortSignal.timeout(5000); // 5s timeout to fail fast
         const response = await fetch(`${endpointBase}/recommendations?${query.toString()}`, {
           method: "GET",
-          cache: "no-store"
+          cache: "no-store",
+          signal
         });
 
         if (!response.ok) {
-          throw new Error(`Recommendations request failed: ${response.status}`);
+          throw new Error(`Recommendations unavailable (${response.status})`);
         }
 
         const payload = (await response.json()) as RecommendationResponse;
@@ -116,7 +118,9 @@ export function ForYouRail({ fallbackFilms }: Props) {
         if (active) {
           setFilms(next.length ? next : fallback);
         }
-      } catch {
+      } catch (error) {
+        // Backend service not available - use fallback silently
+        // In production, ensure NEXT_PUBLIC_RECOMMENDER_API_URL points to live service
         if (active) {
           setFilms(fallback);
         }

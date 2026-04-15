@@ -38,13 +38,17 @@ export type LocalPoster = {
 export type LocalTeaserJob = {
   _id: string;
   title: string;
-  caption?: string;
-  format: "shorts" | "reel" | "widescreen";
-  inputPath: string;
+  genre: string;
+  language: string;
+  duration: number;
+  mood: string;
+  voiceStyle: string;
+  includeSubtitles: boolean;
+  script: string;
+  status: "queued" | "rendering" | "completed" | "failed";
   outputUrl?: string;
-  status: "queued" | "processing" | "completed" | "failed";
   errorMessage?: string;
-  includeVoiceover: boolean;
+  shotstackRenderId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -64,6 +68,8 @@ export type LocalUserActivity = {
 
 export type LocalUserSubscription = {
   plan: PlanType;
+  displayPlan?: string;
+  purchasedPlanId?: string;
   status: "active" | "trial";
   startedAt: string;
   renewalAt: string;
@@ -112,6 +118,12 @@ function dateAfterDays(days: number) {
   return date.toISOString();
 }
 
+function getDefaultDisplayPlan(plan: PlanType) {
+  if (plan === "yearly") return "Premium Annual";
+  if (plan === "monthly") return "Pro Monthly";
+  return "Free";
+}
+
 function buildDefaultUser(overrides: Partial<LocalUser>): LocalUser {
   const now = new Date().toISOString();
   return {
@@ -127,6 +139,8 @@ function buildDefaultUser(overrides: Partial<LocalUser>): LocalUser {
     },
     subscription: {
       plan: overrides.subscription?.plan || "free",
+      displayPlan: overrides.subscription?.displayPlan || getDefaultDisplayPlan(overrides.subscription?.plan || "free"),
+      purchasedPlanId: overrides.subscription?.purchasedPlanId,
       status: overrides.subscription?.status || "active",
       startedAt: overrides.subscription?.startedAt || now,
       renewalAt: overrides.subscription?.renewalAt || dateAfterDays(30)
@@ -600,18 +614,28 @@ export async function updateDemoUserDetails(
   return safeUser(users[index]);
 }
 
-export async function updateDemoUserSubscription(userId: string, plan: PlanType) {
+export async function updateDemoUserSubscription(
+  userId: string,
+  plan: PlanType,
+  input?: {
+    displayPlan?: string;
+    purchasedPlanId?: string;
+    renewalDays?: number;
+  }
+) {
   const users = await ensureDemoUsers();
   const index = users.findIndex((item) => item._id === userId);
   if (index === -1) return null;
 
-  const renewalDays = plan === "yearly" ? 365 : 30;
+  const renewalDays = input?.renewalDays ?? (plan === "yearly" ? 365 : 30);
 
   users[index] = {
     ...users[index],
     subscription: {
       ...users[index].subscription,
       plan,
+      displayPlan: input?.displayPlan || getDefaultDisplayPlan(plan),
+      purchasedPlanId: input?.purchasedPlanId,
       startedAt: new Date().toISOString(),
       renewalAt: dateAfterDays(renewalDays)
     },

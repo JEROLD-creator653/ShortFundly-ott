@@ -43,6 +43,7 @@ Copy `.env.example` to `.env.local` and populate the values you need:
 - `ADMIN_DASHBOARD_TOKEN` for admin support dashboard access control
 - `OPENAI_API_KEY` and `POSTER_IMAGE_MODEL` for poster generation
 - `SHOTSTACK_API_KEY` and `SHOTSTACK_HOST` for teaser rendering
+- `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` for checkout order creation and payment verification
 - `PUBLIC_ASSET_BASE_URL` (or `NEXT_PUBLIC_APP_URL`) to expose uploaded teaser assets for Shotstack
 
 ## Notes

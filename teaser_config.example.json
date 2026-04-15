@@ -1,0 +1,32 @@
+{
+  "title": "Echoes of Our Voices",
+  "genre": "thriller",
+  "language": "en",
+  "duration": 45,
+  "mood": "mysterious, tense, haunting",
+  "voice_style": "whispered, dramatic, slow",
+  "clips": [
+    "./sample_clips/scene_1_establishing.mp4",
+    "./sample_clips/scene_2_discovery.mp4",
+    "./sample_clips/scene_3_confrontation.mp4"
+  ],
+  "music": "./sample_music/cinematic_orchestral_bg.mp3",
+  "poster": "https://example.com/echoes_poster.jpg",
+  "output": "./output/echoes_teaser_v1.mp4",
+  "_notes": {
+    "title": "Movie/content title — will be featured in script generation",
+    "genre": "Content type: thriller, action, drama, comedy, romance, etc.",
+    "language": "Two-letter language code: en (English), hi (Hindi), ta (Tamil), etc.",
+    "duration": "Target teaser length in seconds (30-60 recommended)",
+    "mood": "Emotional tone — helps LLM tailor voice-over and shots",
+    "voice_style": "Delivery style — dramatic, whispered, fast, slow, excited, calm, etc.",
+    "clips": [
+      "List of video file paths (absolute or relative)",
+      "Minimum 1 clip recommended, typically 3-5 for best results",
+      "Clips will be trimmed and intercut with AI-generated shots"
+    ],
+    "music": "Path to background music MP3/WAV (optional, but recommended for cinematic feel)",
+    "poster": "URL to poster image (optional, for metadata/branding)",
+    "output": "Where to save final teaser MP4 (optional; defaults to ./teaser_output/)"
+  }
+}

@@ -15,6 +15,8 @@ type Message = {
 type CurrentProfile = {
   subscription: {
     plan: "free" | "monthly" | "yearly";
+    displayPlan?: string;
+    purchasedPlanId?: string;
     renewalAt: string;
   };
   activity: {
@@ -23,6 +25,37 @@ type CurrentProfile = {
     completionRate: number;
     bingeScore: number;
   };
+};
+
+type PlanRecommendationId = "free" | "pro_monthly" | "premium_quarterly" | "premium_annual";
+
+const PLAN_DETAILS: Record<
+  PlanRecommendationId,
+  {
+    label: string;
+    priceText: string;
+    mappedPlan?: "free" | "monthly" | "yearly";
+  }
+> = {
+  free: {
+    label: "Free",
+    priceText: "Rs.0"
+  },
+  pro_monthly: {
+    label: "Pro Monthly",
+    priceText: "Rs.199/month",
+    mappedPlan: "monthly"
+  },
+  premium_quarterly: {
+    label: "Premium Quarterly",
+    priceText: "Rs.499/quarter",
+    mappedPlan: "monthly"
+  },
+  premium_annual: {
+    label: "Premium Annual",
+    priceText: "Rs.1499/year",
+    mappedPlan: "yearly"
+  }
 };
 
 const INITIAL_MESSAGE: Message = {
@@ -49,16 +82,64 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
     });
   }, [messages, isLoading]);
 
+  const getCurrentPlanLabel = () => {
+    if (currentProfile.subscription.displayPlan?.trim()) {
+      return currentProfile.subscription.displayPlan.trim();
+    }
+
+    if (currentProfile.subscription.plan === "yearly") return "Premium Annual";
+    if (currentProfile.subscription.plan === "monthly") return "Pro Monthly";
+    return "Free";
+  };
+
+  const getCurrentPurchasedId = (): PlanRecommendationId => {
+    const purchased = currentProfile.subscription.purchasedPlanId;
+    if (purchased === "pro_monthly" || purchased === "premium_quarterly" || purchased === "premium_annual") {
+      return purchased;
+    }
+
+    if (currentProfile.subscription.plan === "yearly") return "premium_annual";
+    if (currentProfile.subscription.plan === "monthly") return "pro_monthly";
+    return "free";
+  };
+
+  const getPlanRecommendation = () => {
+    const { last30DaysWatchMinutes: watchTime, weeklyActiveDays, completionRate, bingeScore } = currentProfile.activity;
+
+    const watchHours = Math.round((watchTime / 60) * 10) / 10;
+    let recommended: PlanRecommendationId = "pro_monthly";
+    let reason = "You are watching regularly and would benefit from a premium plan.";
+
+    if (watchTime < 60 && weeklyActiveDays <= 1 && completionRate < 40) {
+      recommended = "free";
+      reason = "Your current usage is light, so the free plan is enough for now.";
+    } else if (watchTime >= 420 || (weeklyActiveDays >= 5 && completionRate >= 70) || bingeScore >= 0.85) {
+      recommended = "premium_annual";
+      reason =
+        "You have strong binge behavior and high consistency. Annual gives the best value for your usage level.";
+    } else if (watchTime >= 180 || weeklyActiveDays >= 3 || completionRate >= 60 || bingeScore >= 0.5) {
+      recommended = "premium_quarterly";
+      reason = "Your usage is moderate-to-high, and quarterly is the best balance of value and flexibility.";
+    }
+
+    return {
+      recommended,
+      watchHours,
+      reason,
+      statsLine: `Watch time: ${watchHours}h/30d, active days: ${weeklyActiveDays}/week, completion: ${completionRate}%, binge score: ${bingeScore}.`
+    };
+  };
+
   const parseSubscriptionRequest = (
     query: string
   ): {
-    requestType: "upgrade" | "downgrade" | "check" | "info" | null;
+    requestType: "upgrade" | "downgrade" | "check" | "info" | "recommend" | null;
     targetPlan?: "free" | "monthly" | "yearly";
   } => {
     const q = query.toLowerCase();
 
-    if (/(upgrade|switch to|change to).*(monthly|yearly)/i.test(q)) {
-      const plan = /yearly/i.test(q) ? "yearly" : "monthly";
+    if (/(upgrade|switch to|change to).*(monthly|pro|yearly|annual)/i.test(q)) {
+      const plan = /(yearly|annual)/i.test(q) ? "yearly" : "monthly";
       return { requestType: "upgrade", targetPlan: plan };
     }
 
@@ -66,7 +147,11 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
       return { requestType: "downgrade", targetPlan: "free" };
     }
 
-    if (/(suggest|recommend|what.*plan|should.*upgrade|should.*downgrade|current.*plan|plan.*options)/i.test(q)) {
+    if (/(suggest|recommend|what.*plan|which.*plan|best.*plan|suits?.*watch|watch.*time|completion.*rate|should.*upgrade|should.*downgrade|current.*plan|plan.*options|which.*subscription|purchase.*plan|buy.*plan)/i.test(q)) {
+      return { requestType: "recommend" };
+    }
+
+    if (/(quarterly|annual|monthly|pro|premium).*plan|plan.*(quarterly|annual|monthly|pro|premium)/i.test(q)) {
       return { requestType: "check" };
     }
 
@@ -77,87 +162,46 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
     return { requestType: null };
   };
 
-  const generateSmartResponse = (): {
+  const generateSmartResponse = (mode: "check" | "recommend" | "info" = "check"): {
     text: string;
     action?: Message["action"];
   } => {
-    const { plan } = currentProfile.subscription;
-    const { last30DaysWatchMinutes: watchTime, weeklyActiveDays, completionRate, bingeScore } = currentProfile.activity;
+    const currentPlanLabel = getCurrentPlanLabel();
+    const currentPurchasedId = getCurrentPurchasedId();
+    const recommendation = getPlanRecommendation();
+    const recommendedDetails = PLAN_DETAILS[recommendation.recommended];
+    const currentDetails = PLAN_DETAILS[currentPurchasedId];
 
-    const isActive = weeklyActiveDays >= 5;
-    const isHeavyViewer = watchTime >= 300;
-    const isCompletionHeavy = completionRate >= 75;
-
-    // Smart suggestion logic
-    if (plan === "free") {
-      if (isActive && watchTime >= 150) {
-        return {
-          text: `I see you're quite active! You've watched ${watchTime} minutes in the last month with ${weeklyActiveDays} active days. The **monthly plan** would be perfect for you—unlock all premium content at a great price. Want to upgrade?`,
-          action: {
-            type: "suggest-upgrade",
-            plan: "monthly"
-          }
-        };
-      }
-
-      if (isHeavyViewer && isCompletionHeavy) {
-        return {
-          text: `You're a power watcher! With ${watchTime} minutes watched and ${completionRate}% completion rate, the **yearly plan** is your best value—watch unlimited premium content year-round.`,
-          action: {
-            type: "suggest-upgrade",
-            plan: "yearly"
-          }
-        };
-      }
-
+    if (mode === "info") {
       return {
-        text: "You're on the free plan. Based on your current viewing habits, keep enjoying free content, or upgrade to monthly/yearly to unlock premium titles."
+        text:
+          `You can purchase these plans: Pro Monthly (Rs.199/month), Premium Quarterly (Rs.499/quarter), Premium Annual (Rs.1499/year). ` +
+          `You are currently on ${currentPlanLabel} and it renews on ${new Date(currentProfile.subscription.renewalAt).toLocaleDateString()}.`
       };
     }
 
-    if (plan === "monthly") {
-      if (watchTime >= 400 && isCompletionHeavy) {
-        return {
-          text: `Wow, you're a true cinephile! With ${watchTime} minutes watched and ${completionRate}% completion rate, the **yearly plan** saves you money and removes interruptions. Ready to go annual?`,
-          action: {
-            type: "suggest-upgrade",
-            plan: "yearly"
-          }
-        };
-      }
-
-      if (watchTime < 60 && weeklyActiveDays < 2) {
-        return {
-          text: `I notice your usage has been light recently (${watchTime} minutes in 30 days). Would the free plan work better for you right now?`,
-          action: {
-            type: "suggest-downgrade",
-            plan: "free"
-          }
-        };
-      }
-
+    if (recommendation.recommended === currentPurchasedId) {
       return {
-        text: "You're enjoying the monthly plan! Your viewing is steady. Keep watching, or upgrade to yearly if you want better value."
+        text: `You are currently on ${currentPlanLabel}, and based on your usage this is the best fit right now. ${recommendation.statsLine} ${recommendation.reason}`
       };
     }
 
-    if (plan === "yearly") {
-      if (watchTime < 50 && weeklyActiveDays < 1) {
-        return {
-          text: `Your usage has dropped significantly (${watchTime} minutes in 30 days). Consider downgrading to monthly to better match your viewing habits?`,
-          action: {
-            type: "suggest-downgrade",
-            plan: "monthly"
-          }
-        };
-      }
+    const mappedTarget = recommendedDetails.mappedPlan;
+    const action =
+      mappedTarget && mappedTarget !== currentProfile.subscription.plan
+        ? ({
+            type: mappedTarget === "free" ? "suggest-downgrade" : "suggest-upgrade",
+            plan: mappedTarget
+          } as Message["action"])
+        : undefined;
 
-      return {
-        text: `You're all set with the yearly plan! You have unlimited access to premium content. Keep enjoying!`
-      };
-    }
-
-    return { text: "How can I help you with your subscription today?" };
+    return {
+      text:
+        `Based on your viewing behavior, the best plan for you is ${recommendedDetails.label} (${recommendedDetails.priceText}). ` +
+        `${recommendation.statsLine} ${recommendation.reason} ` +
+        `You are currently on ${currentDetails.label}.`,
+      action
+    };
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -203,16 +247,32 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
           }
         };
       } else if (parsed.requestType === "check") {
-        const { text, action } = generateSmartResponse();
+        const { text, action } = generateSmartResponse("check");
         assistantMsg = {
           role: "assistant",
           content: text,
           timestamp: Date.now(),
           action
         };
+      } else if (parsed.requestType === "recommend") {
+        const { text, action } = generateSmartResponse("recommend");
+        assistantMsg = {
+          role: "assistant",
+          content: text,
+          timestamp: Date.now(),
+          action
+        };
+      } else if (parsed.requestType === "info") {
+        const { text } = generateSmartResponse("info");
+        assistantMsg = {
+          role: "assistant",
+          content: text,
+          timestamp: Date.now(),
+          action: undefined
+        };
       } else {
         /* Generic response for other queries */
-        const { text } = generateSmartResponse();
+        const { text } = generateSmartResponse("check");
         assistantMsg = {
           role: "assistant",
           content: text || "How can I help with your subscription?",
@@ -291,15 +351,20 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
 
               {msg.action && (
                 <div className="pt-2">
-                  {msg.action.type === "accept-plan" && msg.action.plan && (
-                    <button
-                      onClick={() => applyPlanChange(msg.action.plan!)}
-                      disabled={updatingPlan}
-                      className="w-full rounded-full bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white transition hover:brightness-110 active:scale-95 disabled:opacity-60"
-                    >
-                      {updatingPlan ? "Updating..." : `Switch to ${msg.action.plan}`}
-                    </button>
-                  )}
+                  {msg.action.type === "accept-plan" && msg.action.plan
+                    ? (() => {
+                        const actionPlan = msg.action.plan;
+                        return (
+                          <button
+                            onClick={() => applyPlanChange(actionPlan)}
+                            disabled={updatingPlan}
+                            className="w-full rounded-full bg-primary px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white transition hover:brightness-110 active:scale-95 disabled:opacity-60"
+                          >
+                            {updatingPlan ? "Updating..." : `Switch to ${actionPlan}`}
+                          </button>
+                        );
+                      })()
+                    : null}
                 </div>
               )}
             </div>

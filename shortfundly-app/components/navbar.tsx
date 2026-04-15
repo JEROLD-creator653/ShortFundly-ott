@@ -19,6 +19,7 @@ type SearchResult = {
 const links = [
   { href: "/", label: "Home" },
   { href: "/explore", label: "Explore" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/my-list", label: "Watch List" },
   { href: "/submit", label: "Submit" }
 ];
@@ -313,7 +314,7 @@ export function Navbar() {
           ) : authState.authenticated && authState.user ? (
             <>
               <Link
-                href="/profile"
+                href="/pricing"
                 aria-label="Manage subscription"
                 className="flex h-11 items-center gap-1.5 rounded-full border border-[#d97706]/60 bg-[#d97706]/10 px-5 text-sm font-semibold tracking-wide text-[#d97706] transition hover:bg-[#d97706]/20 hover:border-[#d97706]"
               >
@@ -336,7 +337,7 @@ export function Navbar() {
           ) : (
             <>
               <Link
-                href="/profile"
+                href="/pricing"
                 aria-label="Manage subscription"
                 className="flex h-11 items-center gap-1.5 rounded-full border border-[#d97706]/60 bg-[#d97706]/10 px-5 text-sm font-semibold tracking-wide text-[#d97706] transition hover:bg-[#d97706]/20 hover:border-[#d97706]"
               >

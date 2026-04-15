@@ -3,7 +3,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { TeaserRender } from "@/lib/models/teaser-render";
-import { hasMongoConnection, listTeaserRenders } from "@/lib/persistence/local-store";
+import { hasMongoConnection, listTeaserJobs } from "@/lib/persistence/local-store";
 
 export const runtime = "nodejs";
 
@@ -27,7 +27,7 @@ export async function GET(_: Request, context: { params: Promise<{ jobId: string
     const mongoJob = (await TeaserRender.findById(jobId).lean()) as { outputUrl?: string } | null;
     outputUrl = mongoJob?.outputUrl;
   } else {
-    const localJob = (await listTeaserRenders(1000)).find((item) => item._id === jobId);
+    const localJob = (await listTeaserJobs(1000)).find((item) => item._id === jobId);
     outputUrl = localJob?.outputUrl;
   }
 

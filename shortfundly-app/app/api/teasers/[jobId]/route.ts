@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { TeaserRender } from "@/lib/models/teaser-render";
 import { getShotstackRender } from "@/lib/teaser-generator/shotstack";
-import { hasMongoConnection, listTeaserRenders, updateTeaserRender } from "@/lib/persistence/local-store";
+import { hasMongoConnection, listTeaserJobs, updateTeaserJob } from "@/lib/persistence/local-store";
 
 export const runtime = "nodejs";
 
@@ -22,7 +22,7 @@ export async function GET(_: Request, context: { params: Promise<{ jobId: string
     await connectMongo();
     record = await TeaserRender.findById(jobId).lean();
   } else {
-    record = (await listTeaserRenders(1000)).find((item) => item._id === jobId) || null;
+    record = (await listTeaserJobs(1000)).find((item) => item._id === jobId) || null;
   }
 
   if (!record) {
@@ -43,7 +43,7 @@ export async function GET(_: Request, context: { params: Promise<{ jobId: string
         });
         record = await TeaserRender.findById(jobId).lean();
       } else {
-        record = await updateTeaserRender(jobId, {
+        record = await updateTeaserJob(jobId, {
           status,
           ...(status === "failed" && remote.error ? { errorMessage: remote.error } : {}),
           ...(remote.url ? { outputUrl: remote.url } : {})
