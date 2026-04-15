@@ -26,10 +26,7 @@ export function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-
-  if (pathname === "/login") {
-    return null;
-  }
+  const isLoginRoute = pathname === "/login";
 
   const initialQuery = searchParams.get("q") ?? "";
   const [searchValue, setSearchValue] = useState(initialQuery);
@@ -199,6 +196,10 @@ export function Navbar() {
     : "Free Plan";
 
   const getWatchHref = (item: SearchResult) => `/watch/${item.id ?? item.slug}`;
+
+  if (isLoginRoute) {
+    return null;
+  }
 
   return (
     <header
