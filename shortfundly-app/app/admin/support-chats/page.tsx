@@ -1,25 +1,19 @@
 import { connectMongo } from "@/lib/db/mongo";
 import { SupportChat } from "@/lib/models/support-chat";
+import { getServerSession } from "@/lib/auth/demo-session";
 import { hasMongoConnection, listSupportChats } from "@/lib/persistence/local-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Props = {
-  searchParams: Promise<{ token?: string }>;
-};
+export default async function SupportChatsAdminPage() {
+  const session = await getServerSession();
 
-export default async function SupportChatsAdminPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const token = params.token || "";
-
-  if (!process.env.ADMIN_DASHBOARD_TOKEN || token !== process.env.ADMIN_DASHBOARD_TOKEN) {
+  if (!session || session.role !== "admin") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-24 md:px-8">
         <h1 className="text-3xl uppercase [font-family:var(--font-heading)]">Support Chats Admin</h1>
-        <p className="mt-4 text-zinc-300">
-          Unauthorized. Add your token in URL query: <span className="text-primary">?token=YOUR_ADMIN_DASHBOARD_TOKEN</span>
-        </p>
+        <p className="mt-4 text-zinc-300">Unauthorized. Please sign in as admin to open support conversations.</p>
       </div>
     );
   }

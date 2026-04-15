@@ -32,6 +32,15 @@ export function Navbar() {
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authState, setAuthState] = useState<{
+    authenticated: boolean;
+    user: {
+      name: string;
+      role: "user" | "admin";
+      subscription?: { plan?: string };
+    } | null;
+  }>({ authenticated: false, user: null });
   const searchRootRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isHome = pathname === "/";
@@ -59,6 +68,33 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        const payload = (await response.json()) as {
+          authenticated?: boolean;
+          user?: {
+            name: string;
+            role: "user" | "admin";
+            subscription?: { plan?: string };
+          };
+        };
+
+        setAuthState({
+          authenticated: Boolean(payload.authenticated),
+          user: payload.user || null
+        });
+      } catch {
+        setAuthState({ authenticated: false, user: null });
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    loadSession();
+  }, [pathname]);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -125,6 +161,14 @@ export function Navbar() {
     event.preventDefault();
     const term = searchValue.trim();
 
+    if (term) {
+      void fetch("/api/user/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ searched: true })
+      }).catch(() => null);
+    }
+
     if (!term) {
       router.push("/explore");
       return;
@@ -137,6 +181,17 @@ export function Navbar() {
   const openSearch = () => {
     setSearchOpen(true);
   };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    setAuthState({ authenticated: false, user: null });
+    router.push("/");
+    router.refresh();
+  };
+
+  const planLabel = authState.user?.subscription?.plan
+    ? `${authState.user.subscription.plan.toUpperCase()} Plan`
+    : "Free Plan";
 
   const getWatchHref = (item: SearchResult) => `/watch/${item.id ?? item.slug}`;
 
@@ -248,12 +303,46 @@ export function Navbar() {
               ) : null}
             </form>
           </div>
-          <button
-            aria-label="Open profile and subscription"
-            className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
-          >
-            Free Plan
-          </button>
+          {authLoading ? (
+            <span className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Loading...
+            </span>
+          ) : authState.authenticated && authState.user ? (
+            <>
+              <Link
+                href={authState.user.role === "admin" ? "/admin" : "/profile"}
+                aria-label="Open account"
+                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
+              >
+                {authState.user.role === "admin" ? "Admin" : planLabel}
+              </Link>
+              <button
+                aria-label="Sign out"
+                onClick={handleLogout}
+                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
+                type="button"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login?role=user"
+                aria-label="User login"
+                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
+              >
+                User Login
+              </Link>
+              <Link
+                href="/login?role=admin"
+                aria-label="Admin login"
+                className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-200 transition hover:border-primary hover:text-primary"
+              >
+                Admin
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

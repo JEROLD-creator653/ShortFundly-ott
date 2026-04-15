@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { SupportChat } from "@/lib/models/support-chat";
 import { getCatalog } from "@/lib/content-service";
 import { getEscalationAnswer, getFaqAnswer, getOffTopicResponse } from "@/lib/ai/support";
 import { getGeminiModel } from "@/lib/ai/gemini";
+import { getSessionFromRequest } from "@/lib/auth/demo-session";
+import { formatSuggestionLine, getSubscriptionSuggestion } from "@/lib/subscription-ai";
 import {
   addSupportChatMessage,
-  hasMongoConnection
+  getDemoUserById,
+  hasMongoConnection,
+  recordDemoUserActivity
 } from "@/lib/persistence/local-store";
 
 export const runtime = "nodejs";
@@ -72,7 +76,7 @@ async function getCatalogFallbackAnswer(question: string): Promise<string | null
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as ChatBody;
   const sessionId = body.sessionId?.trim();
   const message = body.message?.trim();
@@ -99,11 +103,36 @@ export async function POST(request: Request) {
     await connectMongo();
   }
 
+  const authSession = getSessionFromRequest(request);
+  const currentUser = authSession?.userId ? await getDemoUserById(authSession.userId) : null;
+  const activeUserId = authSession?.userId || body.userId;
+  const activeUserEmail = authSession?.email || body.userEmail;
+
+  if (activeUserId) {
+    await recordDemoUserActivity(activeUserId, {
+      watchMinutes: 0,
+      completed: false,
+      searched: false,
+      liked: false,
+      supportChat: true
+    }).catch(() => null);
+  }
+
   const faq = getFaqAnswer(message);
   const catalogFallback = faq ? null : await getCatalogFallbackAnswer(message);
   const isEscalated = !faq && !catalogFallback;
   const escalationAnswer = getEscalationAnswer();
-  const fallbackAnswer = faq?.answer || catalogFallback || escalationAnswer;
+  const needsPlanSuggestion = /(plan|subscription|pricing|upgrade|downgrade|monthly|yearly)/i.test(message);
+  const personalizedPlanHint =
+    currentUser && needsPlanSuggestion
+      ? formatSuggestionLine(
+          currentUser.subscription.plan,
+          getSubscriptionSuggestion(currentUser.subscription.plan, currentUser.activity)
+        )
+      : null;
+  const fallbackAnswer = [faq?.answer || catalogFallback || escalationAnswer, personalizedPlanHint]
+    .filter(Boolean)
+    .join("\n\n");
   const shouldUseLlm = Boolean(process.env.GEMINI_API_KEY?.trim());
 
   const saveConversation = async (assistantReply: string, escalated: boolean) => {
@@ -113,14 +142,14 @@ export async function POST(request: Request) {
         chat = await SupportChat.create({
           sessionId,
           source: "widget",
-          userId: body.userId,
-          userEmail: body.userEmail,
+          userId: activeUserId,
+          userEmail: activeUserEmail,
           messages: []
         });
       }
 
-      if (body.userEmail) {
-        chat.userEmail = body.userEmail;
+      if (activeUserEmail) {
+        chat.userEmail = activeUserEmail;
       }
 
       if (escalated) {
@@ -136,15 +165,15 @@ export async function POST(request: Request) {
 
     await addSupportChatMessage({
       sessionId,
-      userId: body.userId,
-      userEmail: body.userEmail,
+      userId: activeUserId,
+      userEmail: activeUserEmail,
       role: "user",
       content: message
     });
     await addSupportChatMessage({
       sessionId,
-      userId: body.userId,
-      userEmail: body.userEmail,
+      userId: activeUserId,
+      userEmail: activeUserEmail,
       role: "assistant",
       content: assistantReply,
       escalated,
@@ -177,6 +206,7 @@ export async function POST(request: Request) {
                     faq
                       ? `Approved FAQ source (use this as authoritative): ${faq.answer}`
                       : "No predefined FAQ matched. Provide best-effort Shortfundly guidance and include escalation path if unsure.",
+                    personalizedPlanHint ? `User-specific subscription insight: ${personalizedPlanHint}` : "",
                     `User question: ${message}`
                   ].join("\n")
                 }

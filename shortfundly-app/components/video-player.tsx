@@ -41,6 +41,7 @@ function writeContinueList(items: ContinueItem[]) {
 export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
   const lastPersistRef = useRef(0);
+  const lastActivitySyncRef = useRef(0);
   const [subtitleChunks, setSubtitleChunks] = useState<SubtitleChunk[]>([]);
   const [sceneMetadata, setSceneMetadata] = useState<SceneMeta[]>([]);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
@@ -117,6 +118,15 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
         lastPersistRef.current = video.currentTime;
       }
 
+      if (video.currentTime - lastActivitySyncRef.current >= 30) {
+        lastActivitySyncRef.current = video.currentTime;
+        void fetch("/api/user/activity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ watchMinutes: 0.5 })
+        }).catch(() => null);
+      }
+
       setSceneMetadata((prev) => {
         const marker = Math.floor(video.currentTime / 60) * 60;
         if (marker < 0) return prev;
@@ -134,6 +144,22 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
 
     const onPause = () => {
       saveContextualSession();
+
+      if (video.currentTime > 0) {
+        void fetch("/api/user/activity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ watchMinutes: 0.2 })
+        }).catch(() => null);
+      }
+    };
+
+    const onEnded = () => {
+      void fetch("/api/user/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watchMinutes: 1, completed: true })
+      }).catch(() => null);
     };
 
     const onBeforeUnload = () => {
@@ -142,11 +168,13 @@ export function VideoPlayer({ slug, title, source, synopsis, details }: Props) {
 
     video.addEventListener("timeupdate", onProgress);
     video.addEventListener("pause", onPause);
+    video.addEventListener("ended", onEnded);
     window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => {
       video.removeEventListener("timeupdate", onProgress);
       video.removeEventListener("pause", onPause);
+      video.removeEventListener("ended", onEnded);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [details, episodeId, sceneMetadata, slug, subtitleChunks, synopsis, title]);
