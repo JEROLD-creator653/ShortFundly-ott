@@ -75,6 +75,32 @@ function normalizeImage(value: string | undefined): string | undefined {
   }
 }
 
+function normalizeMediaUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (value === "null") return undefined;
+  if (value.startsWith("//")) return `https:${value}`;
+  return value;
+}
+
+function isLikelyMediaUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = normalizeMediaUrl(value);
+  if (!normalized) return false;
+
+  const mediaExt = /\.(m3u8|mp4|m4v|webm|mov|mkv|mpd)(\?|$)/i;
+
+  try {
+    const url = new URL(normalized);
+    const pathname = url.pathname.toLowerCase();
+    if (mediaExt.test(pathname)) return true;
+    if (url.hostname.includes("jwplayer.com") && pathname.includes("/manifests/")) return true;
+    if (mediaExt.test(url.search)) return true;
+    return false;
+  } catch {
+    return mediaExt.test(normalized) || /jwplayer\.com\/manifests\//i.test(normalized);
+  }
+}
+
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -200,8 +226,16 @@ function normalizeFilm(item: UnknownRecord): Film | undefined {
     asString(item.access)?.toLowerCase() === "premium";
 
   const mediaId = asString(item.mediaId);
-  const source = asString(item.source);
-  const stream = asString(item.streamUrl) ?? asString(item.videoUrl) ?? asString(item.video);
+  const source = normalizeMediaUrl(asString(item.source));
+  const streamCandidates = [
+    normalizeMediaUrl(asString(item.streamUrl)),
+    normalizeMediaUrl(asString(item.videoUrl)),
+    normalizeMediaUrl(asString(item.video)),
+    mediaId ? `https://cdn.jwplayer.com/manifests/${mediaId}.m3u8` : undefined,
+    source
+  ].filter((entry): entry is string => Boolean(entry));
+
+  const selectedStream = streamCandidates.find((url) => isLikelyMediaUrl(url));
 
   return {
     id,
@@ -220,11 +254,7 @@ function normalizeFilm(item: UnknownRecord): Film | undefined {
     synopsis: asString(item.synopsis) ?? asString(item.description) ?? asString(item.certify) ?? "",
     language: asString(item.language) ?? asString((item.language as UnknownRecord)?.name) ?? parseLanguage(item) ?? "Hindi",
     festival: asString(item.festival),
-    videoUrl:
-      source ??
-      stream ??
-      (mediaId ? `https://cdn.jwplayer.com/manifests/${mediaId}.m3u8` : undefined) ??
-      "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    videoUrl: selectedStream ?? "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
   };
 }
 
