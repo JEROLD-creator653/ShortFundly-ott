@@ -8,5 +8,5 @@ export function getGeminiModel() {
   }
 
   const client = new GoogleGenerativeAI(GEMINI_API_KEY);
-  return client.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-1.5-flash" });
+  return client.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-2.0-flash" });
 }

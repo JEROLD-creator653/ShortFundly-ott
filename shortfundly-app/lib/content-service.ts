@@ -5,6 +5,7 @@ const base = (process.env.NEXT_PUBLIC_CONTENT_API_BASE_URL || "https://sfapi.sho
 const apiKey = process.env.NEXT_PUBLIC_CONTENT_API_KEY || "web-X-Shortfundly-x-api-key";
 const PAGE_LIMIT = 50;
 const MAX_PAGES = 30;
+const EXCLUDED_BROKEN_POSTER_TITLES = ["watch ponnana nimidangal", "srilankan sundari"];
 
 type UnknownRecord = Record<string, unknown>;
 type ApiImage = {
@@ -263,7 +264,11 @@ function normalizeCatalog(items: unknown): Film[] {
 
   return items
     .map((item) => (item && typeof item === "object" ? normalizeFilm(item as UnknownRecord) : undefined))
-    .filter((item): item is Film => Boolean(item));
+    .filter((item): item is Film => Boolean(item))
+    .filter((film) => {
+      const title = film.title.toLowerCase();
+      return !EXCLUDED_BROKEN_POSTER_TITLES.some((blocked) => title.includes(blocked));
+    });
 }
 
 async function fetchJson<T>(url: string): Promise<T> {

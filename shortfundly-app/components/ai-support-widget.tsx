@@ -8,6 +8,14 @@ type Message = {
   timestamp: number;
 };
 
+type ContinueItem = {
+  slug: string;
+  title: string;
+  progress: number;
+};
+
+const CONTINUE_KEY = "shortfundly:continue";
+
 /* ─── FAQ Quick Replies ─── */
 const QUICK_REPLIES = [
   { label: "Subscription Plans", question: "What subscription plans are available?" },
@@ -162,10 +170,21 @@ export function AiSupportWidget() {
     setIsStreaming(true);
 
     try {
+      let continueWatching: ContinueItem[] = [];
+      try {
+        const raw = localStorage.getItem(CONTINUE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as ContinueItem[];
+          continueWatching = Array.isArray(parsed) ? parsed.slice(0, 12) : [];
+        }
+      } catch {
+        continueWatching = [];
+      }
+
       const response = await fetch("/api/support-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: trimmed })
+        body: JSON.stringify({ sessionId, message: trimmed, continueWatching })
       });
 
       if (!response.ok || !response.body) {
@@ -299,7 +318,7 @@ export function AiSupportWidget() {
                         : "bg-zinc-900/90 text-zinc-100 ring-1 ring-zinc-800/60 rounded-bl-md"
                     }`}
                   >
-                    {message.content || (isStreaming && isLast ? null : "")}
+                    <p className="whitespace-pre-line">{message.content || (isStreaming && isLast ? null : "")}</p>
                   </div>
 
                   {/* Typing indicator for empty streaming message */}

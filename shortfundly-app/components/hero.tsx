@@ -85,8 +85,8 @@ export function Hero({ features }: Props) {
         thumbnail={activeFeature.thumbnail}
         videoUrl={activeFeature.videoUrl}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/55 to-black/15" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/65" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/28 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/18 to-black/55" />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-7xl items-end px-4 pb-12 pt-28 md:min-h-[100svh] md:px-8 md:pb-36 md:pt-32">
         <div className="max-w-2xl animate-rise opacity-85 transition-opacity duration-500 group-hover/hero-ui:opacity-100">

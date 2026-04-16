@@ -65,6 +65,15 @@ const INITIAL_MESSAGE: Message = {
   timestamp: Date.now()
 };
 
+const QUICK_QUESTIONS = [
+  "What is my current plan?",
+  "When does my plan renew?",
+  "Which plan suits my watch time?",
+  "Compare Pro, Quarterly, and Annual",
+  "Should I upgrade or downgrade?",
+  "Show all available plans and prices"
+];
+
 export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProfile }) {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
@@ -72,6 +81,7 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
   const [updatingPlan, setUpdatingPlan] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasUserSent = messages.some((message) => message.role === "user");
 
   /* Auto-scroll to bottom */
   useEffect(() => {
@@ -162,54 +172,38 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
     return { requestType: null };
   };
 
-  const generateSmartResponse = (mode: "check" | "recommend" | "info" = "check"): {
-    text: string;
-    action?: Message["action"];
-  } => {
-    const currentPlanLabel = getCurrentPlanLabel();
-    const currentPurchasedId = getCurrentPurchasedId();
-    const recommendation = getPlanRecommendation();
-    const recommendedDetails = PLAN_DETAILS[recommendation.recommended];
-    const currentDetails = PLAN_DETAILS[currentPurchasedId];
+  const fetchAdvisorReply = async (question: string) => {
+    const response = await fetch("/api/subscription-advisor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: question,
+        profile: currentProfile
+      })
+    });
 
-    if (mode === "info") {
-      return {
-        text:
-          `You can purchase these plans: Pro Monthly (Rs.199/month), Premium Quarterly (Rs.499/quarter), Premium Annual (Rs.1499/year). ` +
-          `You are currently on ${currentPlanLabel} and it renews on ${new Date(currentProfile.subscription.renewalAt).toLocaleDateString()}.`
-      };
+    if (!response.ok || !response.body) {
+      throw new Error("Unable to get advisor response");
     }
 
-    if (recommendation.recommended === currentPurchasedId) {
-      return {
-        text: `You are currently on ${currentPlanLabel}, and based on your usage this is the best fit right now. ${recommendation.statsLine} ${recommendation.reason}`
-      };
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let output = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      output += decoder.decode(value, { stream: true });
     }
 
-    const mappedTarget = recommendedDetails.mappedPlan;
-    const action =
-      mappedTarget && mappedTarget !== currentProfile.subscription.plan
-        ? ({
-            type: mappedTarget === "free" ? "suggest-downgrade" : "suggest-upgrade",
-            plan: mappedTarget
-          } as Message["action"])
-        : undefined;
-
-    return {
-      text:
-        `Based on your viewing behavior, the best plan for you is ${recommendedDetails.label} (${recommendedDetails.priceText}). ` +
-        `${recommendation.statsLine} ${recommendation.reason} ` +
-        `You are currently on ${currentDetails.label}.`,
-      action
-    };
+    output += decoder.decode();
+    return output.trim();
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = input.trim();
+  const processQuestion = async (rawQuestion: string) => {
+    const trimmed = rawQuestion.trim();
     if (!trimmed || isLoading) return;
 
-    /* Add user message */
     const userMsg: Message = {
       role: "user",
       content: trimmed,
@@ -220,70 +214,50 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
     setInput("");
     setIsLoading(true);
 
-    /* Parse subscription request */
     const parsed = parseSubscriptionRequest(trimmed);
+    const recommendation = getPlanRecommendation();
+    const currentPurchasedId = getCurrentPurchasedId();
 
     try {
-      let assistantMsg: Message;
+      const advisorText = await fetchAdvisorReply(trimmed);
+      const action: Message["action"] =
+        parsed.requestType === "upgrade" && parsed.targetPlan
+          ? {
+              type: "accept-plan",
+              plan: parsed.targetPlan
+            }
+          : parsed.requestType === "downgrade" && parsed.targetPlan
+            ? {
+                type: "accept-plan",
+                plan: parsed.targetPlan
+              }
+            : parsed.requestType === "recommend" && recommendation.recommended !== currentPurchasedId
+              ? {
+                  type: recommendation.recommended === "free" ? "suggest-downgrade" : "suggest-upgrade",
+                  plan: PLAN_DETAILS[recommendation.recommended].mappedPlan
+                }
+              : undefined;
 
-      if (parsed.requestType === "upgrade" && parsed.targetPlan) {
-        assistantMsg = {
-          role: "assistant",
-          content: `Great! Let me help you upgrade to the ${parsed.targetPlan} plan. Click the button below to confirm, and it'll take effect immediately.`,
-          timestamp: Date.now(),
-          action: {
-            type: "accept-plan",
-            plan: parsed.targetPlan
-          }
-        };
-      } else if (parsed.requestType === "downgrade" && parsed.targetPlan) {
-        assistantMsg = {
-          role: "assistant",
-          content: `Understood. Let me help you switch to the ${parsed.targetPlan} plan. Click the button below to confirm the change.`,
-          timestamp: Date.now(),
-          action: {
-            type: "accept-plan",
-            plan: parsed.targetPlan
-          }
-        };
-      } else if (parsed.requestType === "check") {
-        const { text, action } = generateSmartResponse("check");
-        assistantMsg = {
-          role: "assistant",
-          content: text,
-          timestamp: Date.now(),
-          action
-        };
-      } else if (parsed.requestType === "recommend") {
-        const { text, action } = generateSmartResponse("recommend");
-        assistantMsg = {
-          role: "assistant",
-          content: text,
-          timestamp: Date.now(),
-          action
-        };
-      } else if (parsed.requestType === "info") {
-        const { text } = generateSmartResponse("info");
-        assistantMsg = {
-          role: "assistant",
-          content: text,
-          timestamp: Date.now(),
-          action: undefined
-        };
-      } else {
-        /* Generic response for other queries */
-        const { text } = generateSmartResponse("check");
-        assistantMsg = {
-          role: "assistant",
-          content: text || "How can I help with your subscription?",
-          timestamp: Date.now()
-        };
-      }
+      const assistantMsg: Message = {
+        role: "assistant",
+        content: advisorText || "I can help with your subscription, billing, renewal date, and plan options.",
+        timestamp: Date.now(),
+        action
+      };
 
       setMessages((prev) => [...prev, assistantMsg]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await processQuestion(input);
+  };
+
+  const askQuickQuestion = async (question: string) => {
+    await processQuestion(question);
   };
 
   const applyPlanChange = async (newPlan: "free" | "monthly" | "yearly") => {
@@ -385,6 +359,25 @@ export function ProfileChatbot({ currentProfile }: { currentProfile: CurrentProf
       </div>
 
       {/* Input */}
+      {!hasUserSent && (
+        <div className="border-t border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Quick Questions</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_QUESTIONS.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => void askQuickQuestion(question)}
+                disabled={isLoading}
+                className="rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1.5 text-[11px] text-zinc-300 transition hover:border-primary hover:text-white disabled:opacity-40"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage} className="border-t border-zinc-800/80 bg-zinc-950/50 px-4 py-3">
         <div className="flex items-center gap-2">
           <input

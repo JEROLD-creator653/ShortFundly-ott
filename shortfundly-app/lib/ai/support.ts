@@ -15,7 +15,7 @@ const escalationEmail = process.env.SUPPORT_ESCALATION_EMAIL || "support@shortfu
 
 /* ─── Shortfundly-relevant keyword allowlist ─── */
 const PLATFORM_KEYWORDS =
-  /\b(shortfundly|plan|subscription|premium|payment|pay|upi|card|login|signin|sign in|otp|password|refund|cancel|device|browser|tv|android|ios|iphone|watch|stream|movie|film|short\s?film|video|content|catalog|explore|account|profile|settings|download|offline|buffering|quality|resolution|hd|subtitle|language|genre|app|website|upload|creator|filmmaker|rating|review|notification|support|help|contact|email|ticket)\b/i;
+  /\b(shortfundly|plan|subscription|premium|payment|pay|upi|card|login|signin|sign in|otp|password|refund|cancel|device|browser|tv|android|ios|iphone|watch|stream|movie|movies|film|films|short\s?film|video|content|catalog|explore|account|profile|settings|download|offline|buffering|quality|resolution|hd|subtitle|language|genre|top rated|latest|new release|recommend|continue watching|watch list|my list|pricing|app|website|upload|creator|filmmaker|rating|review|notification|support|help|contact|email|ticket)\b/i;
 
 /* ─── Off-topic detection patterns ─── */
 const OFF_TOPIC_PATTERNS = [
@@ -86,7 +86,13 @@ const FAQ_PATTERNS: Array<{ topic: FaqTopic; regex: RegExp; answer: string }> = 
     topic: "subscription",
     regex: /(subscription|plan|pricing|upgrade|monthly|yearly)/i,
     answer:
-      "Shortfundly offers Free, Monthly Premium, and Yearly Premium plans. You can change your plan from Account > Subscription. Premium unlocks full catalog access with fewer ads."
+      "Shortfundly offers Pro Monthly, Premium Quarterly, and Premium Annual plans (plus Free). You can purchase from Pricing and manage your plan from Profile > Subscription."
+  },
+  {
+    topic: "premium_content",
+    regex: /(top rated|latest movies|new release|recommend movies|genre|watch list|my list|continue watching|what can i watch|list movies)/i,
+    answer:
+      "I can help with catalog discovery too: top rated titles, latest releases, recommendations by genre, your watch list, and continue-watching guidance. Ask for a specific genre or list type."
   },
   {
     topic: "payment_failed",
